@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\fgislk_bot;
 
-use App\Models\fgislk_bot\User;
 use App\Http\Controllers\fgislk_bot\Cookies;
+use App\Models\fgislk_bot\User;
 use Dadata\CleanClient;
 
 class Commands extends Main
@@ -19,10 +19,15 @@ class Commands extends Main
          */
 
         $this->client->command('start', function ($message) use ($bot) {
+
             /**
              * Сведения о полученном сообщении
              */
             $message = $this->messageInfo($message);
+
+            // При команде /start  будут установлены нулевые куки
+            $cookie = new Cookies($message->cid);
+            $cookie->setCoookie(null);
 
             /**
              * Проверка пользователя в БД
@@ -62,7 +67,7 @@ class Commands extends Main
             $this->bot->sendAnimation($message->cid, $animation, null, "$msg2", null, $keyboard, "false", "HTML");
         });
 
-        $this->client->run();
+//        $this->client->run();
 
     }
 }

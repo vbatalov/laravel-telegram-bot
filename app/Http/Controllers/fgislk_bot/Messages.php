@@ -4,9 +4,12 @@ namespace App\Http\Controllers\fgislk_bot;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use TelegramBot\Api\Exception;
 
 class Messages extends Main
 {
+    public Exception $exception;
+
     public function messagesList () {
 
         global $bot;
@@ -16,32 +19,23 @@ class Messages extends Main
         $cookie = new Cookies($cid);
         $data_cookie = $cookie->checkCookie();
         $this->bot->sendMessage('112865662', "Cookie: $data_cookie");
-        die;
 
-        $bot->on(function($Update) use ($bot){
-            $message = $Update->getMessage();
-            $mtext = $message->getText();
-            $mid = $message->getMessageId();
-            $cid = $message->getChat()->getId();
+        try {
+            $this->client->on(function($update) use ($bot){
 
-            // Если есть фото, запрашивает ИД фото
-            $photoId = $Update->getMessage()->getPhoto();
+            $message = $this->messageInfo($update->getMessage());
 
-            //Проверим, есть ли пользователь в новой БД обновленного бота?
-            //Если нет, мы просто предложим заного пройти регистрацию
-            if (checkUserAfterUpdate($cid) == false) {
-                $bot->sendMessage($cid, "<b>Мы обновили функионал бота</b> \n\nДля начала работы нажмите /start", "html");
-                die;
-            }
+            $this->bot->sendMessage($message->cid, 'Function Message Work');
 
-            //Пользователь написал сообщение. Нужно проверить, куда он обращается?
-            require_once("include/cookie.php");
+            }, function() {
+                return true; // когда тут true - команда проходит
+            });
 
-        }, function($message) use ($name){
-            return true; // когда тут true - команда проходит
-        });
+            $this->client->run();
 
-        // запускаем обработку
-        $bot->run();
+        } catch (Exception $e) {
+            print_r($e->getMessage());
+        }
+
     }
 }

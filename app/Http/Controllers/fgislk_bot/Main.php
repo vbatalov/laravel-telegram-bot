@@ -30,7 +30,7 @@ class Main extends Controller
         $token = "5742517907:AAHlP8IsnJjHe7exYZkjmcK7ZQI4LJV5qjk";
         $bot = new Client($token, null);
 
-            $page_url1 = "https://ddce-185-210-141-101.eu.ngrok.io/";
+            $page_url1 = "https://a6c0-37-21-235-73.eu.ngrok.io/";
             $page_url2 = "bot";
             $page_url = $page_url1.$page_url2;
             $bot->setWebhook($page_url);
@@ -38,9 +38,7 @@ class Main extends Controller
 
     public function index() {
 
-//        $cid = 10;
-//        $test = new User("$cid", "firstname1");
-//        $test->checkUser();
+        die;
 
         /**
          * Слушаем команды
@@ -55,12 +53,12 @@ class Main extends Controller
         /**
          * Слушаем callback (нажатие на меню)
          */
-        try {
-            $callback_command = new Menu();
-            $callback_command->callback();
-        } catch (Exception $e) {
-            $this->errorsLog($e);
-        }
+//        try {
+//            $callback_command = new Menu();
+//            $callback_command->callback();
+//        } catch (Exception $e) {
+//            $this->errorsLog($e);
+//        }
 
         /**
          * Слушаем сообщения
@@ -72,7 +70,7 @@ class Main extends Controller
             $this->errorsLog($e);
         }
 
-
+//        $this->client->run();
         $this->bot->sendMessage('112865662', "<b>Bot end</b>", 'html');
     }
 
@@ -82,13 +80,18 @@ class Main extends Controller
      */
     public function messageInfo ($message): object
     {
-        return (object) [
-            'cid' => $message->getChat()->getId() ?? null,
-            'username' => $message->getChat()->getUsername(),
-            'firstname' => $message->getChat()->getFirstname() ?? null,
-            'lastname' => $message->getChat()->getLastname() ?? null,
-            'text' => $message->getText() ?? null,
-        ];
+        try {
+            return (object) [
+                'cid' => $message->getChat()->getId() ?? null,
+                'username' => $message->getChat()->getUsername(),
+                'firstname' => $message->getChat()->getFirstname() ?? null,
+                'lastname' => $message->getChat()->getLastname() ?? null,
+                'text' => $message->getText() ?? null,
+            ];
+        } catch (Exception $e) {
+            print_r($e->getMessage());
+            return (object) [];
+        }
     }
 
     /**
@@ -117,7 +120,7 @@ class Main extends Controller
             $update = file_get_contents("php://input");
             $update_array = json_decode($update, true);
             $update_array += ['Error' => $error_message];
-            $cid = $update_array['message']['from']['id'];
+            $cid = $update_array['message']['from']['id'] ?? null;
 
             $insertToDb = new Error();
             $insertToDb->insertErrorToDb($cid, $update);
