@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\fgislk_bot;
 
 use App\Models\fgislk_bot\User;
+use App\Http\Controllers\fgislk_bot\Cookies;
+use Dadata\CleanClient;
 
 class Commands extends Main
 {
@@ -27,8 +29,8 @@ class Commands extends Main
              * При отсутствии добавляет
              * $cid, $firstname, $lastname, $username
              */
-            $test = new User($message->cid);
-            $test->checkUser();
+            $checkUserInDatabase = new User($message->cid);
+            $checkUserInDatabase->checkUser();
 
             /**
              * Первый этап (приветствие)
@@ -47,7 +49,7 @@ class Commands extends Main
                 [
 
                     [
-                        ['callback_data' => 'menu', 'text' => 'Начать использовать бота']
+                        ['callback_data' => 'setup_city', 'text' => 'Начать использовать бота']
                     ],
                     [
                         ['callback_data' => 'cancel', 'text' => 'Отказаться']

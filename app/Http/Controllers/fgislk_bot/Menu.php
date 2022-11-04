@@ -3,13 +3,7 @@
 namespace App\Http\Controllers\fgislk_bot;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use TelegramBot\Api\Client;
-use TelegramBot\Api\BotApi;
-use TelegramBot\Api\Exception;
-use TelegramBot\Api\InvalidJsonException;
-use TelegramBot\Api\Types\CallbackQuery;
-use TelegramBot\Api\Types\Update;
+use App\Http\Controllers\fgislk_bot\Cookies;
 
 class Menu extends Main
 {
@@ -37,9 +31,13 @@ class Menu extends Main
 
             //Задать вопрос
             if ($data == "menu") {
-                $this->bot->sendMessage("112865662", "hello $cbid");
-            } else if ($data == 'cancel') {
+                $this->bot->sendMessage("$cid", "hello $cbid");
+            } elseif ($data == 'cancel') {
                 $this->bot->answerCallbackQuery($cbid, "Мы не можем допустить использование бота, пока вы не согласитесь с условиями.",true);
+            } elseif ($data == 'setup_city') {
+                $this->bot->sendMessage("$cid", "Для начала потребуется установить город");
+                $cookie = new Cookies($cid);
+                $cookie->setCoookie("setup_city");
             }
 
         }, function($update){
