@@ -62,6 +62,16 @@ class Main extends Controller
             $this->errorsLog($e);
         }
 
+        /**
+         * Слушаем сообщения
+         */
+        try {
+            $messages = new Messages();
+            $messages->messagesList();
+        } catch (Exception $e) {
+            $this->errorsLog($e);
+        }
+
 
         $this->bot->sendMessage('112865662', "<b>Bot end</b>", 'html');
     }

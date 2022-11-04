@@ -8,7 +8,15 @@ use Illuminate\Http\Request;
 class Messages extends Main
 {
     public function messagesList () {
+
         global $bot;
+        $cid = '112865662';
+
+        $this->bot->sendMessage('112865662', 'Message Controller');
+        $cookie = new Cookies($cid);
+        $data_cookie = $cookie->checkCookie();
+        $this->bot->sendMessage('112865662', "Cookie: $data_cookie");
+        die;
 
         $bot->on(function($Update) use ($bot){
             $message = $Update->getMessage();
