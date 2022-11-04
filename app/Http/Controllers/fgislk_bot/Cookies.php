@@ -25,4 +25,15 @@ class Cookies extends Main
             print_r($e->getMessage());
         }
     }
+
+    public function checkCookie () {
+        try {
+            $cookies = DB::table('users')->where('cid', '=', "$this->cid")->get();
+            foreach ($cookies as $cookie) {
+                return $cookie->cookie;
+            }
+        } catch (\Exception $e) {
+            print_r($e->getMessage());
+        }
+    }
 }
