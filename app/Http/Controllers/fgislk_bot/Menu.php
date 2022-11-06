@@ -47,7 +47,7 @@ class Menu extends Main
             return true;
         });
 
-//        $this->client->run();
+        return $this->client->run();
     }
 
 }

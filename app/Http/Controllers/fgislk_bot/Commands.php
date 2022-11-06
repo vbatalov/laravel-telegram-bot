@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\fgislk_bot;
 
 use App\Http\Controllers\fgislk_bot\Cookies;
+
 use App\Models\fgislk_bot\User;
-use Dadata\CleanClient;
+use TelegramBot\Api\InvalidJsonException;
 
 class Commands extends Main
 {
@@ -13,6 +14,7 @@ class Commands extends Main
     public function commandsList() {
 
         global $bot;
+        global $client;
 
         /**
          * Команда /start
@@ -37,6 +39,7 @@ class Commands extends Main
             $checkUserInDatabase = new User($message->cid);
             $checkUserInDatabase->checkUser();
 
+
             /**
              * Первый этап (приветствие)
              */
@@ -45,7 +48,7 @@ class Commands extends Main
             $thirdText = "\n\n<i>Официальный канал @fgislk \nОфициальный сайт ФГИСЛК.РФ</i>";
             $text = $firstText . $secondText . $thirdText;
 
-            $this->bot->sendMessage("$message->cid", "$text", 'html'); // Отправляю первое сообщение
+            $this->client->sendMessage("$message->cid", "$text", 'html'); // Отправляю первое сообщение
 
             /**
              * Второй этап (согласие)
@@ -64,10 +67,9 @@ class Commands extends Main
             );
             $msg2 = "<b>Внимание!</b> \n\nПродолжая использовать бота вы даете согласие на обработку полученных Вами данных. \n\nМы не храним личные данные, не передаем информацию третьим лицам и никогда не запрашиваем пароли. \n\nБот разработан проектом @fgislk \n\n<i>Лучшая благодарность — если вы расскажете о нас всем, кто связан лесом и дорогами.</i>";
             $animation = "https://b2b.kedrach.com/fgislk_bot/images/gif/welcome.gif";
-            $this->bot->sendAnimation($message->cid, $animation, null, "$msg2", null, $keyboard, "false", "HTML");
+            $this->client->sendAnimation($message->cid, $animation, null, "$msg2", null, $keyboard, "false", "HTML");
         });
 
-//        $this->client->run();
-
+        return $this->client->run();
     }
 }

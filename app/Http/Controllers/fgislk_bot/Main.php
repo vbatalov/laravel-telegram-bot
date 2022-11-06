@@ -6,11 +6,8 @@ use App\Http\Controllers\Controller;
 
 use App\Models\fgislk_bot\Error;
 
-
-use App\Models\fgislk_bot\User;
 use TelegramBot\Api\BotApi;
 use TelegramBot\Api\Client;
-use TelegramBot\Api\Exception;
 
 class Main extends Controller
 {
@@ -18,7 +15,6 @@ class Main extends Controller
 
     public BotApi $bot;
     public Client $client;
-    public Exception $exception;
 
     public function __construct () {
         $token = "5742517907:AAHlP8IsnJjHe7exYZkjmcK7ZQI4LJV5qjk";
@@ -30,7 +26,7 @@ class Main extends Controller
         $token = "5742517907:AAHlP8IsnJjHe7exYZkjmcK7ZQI4LJV5qjk";
         $bot = new Client($token, null);
 
-            $page_url1 = "https://a6c0-37-21-235-73.eu.ngrok.io/";
+            $page_url1 = "https://d280-37-21-235-73.eu.ngrok.io/";
             $page_url2 = "bot";
             $page_url = $page_url1.$page_url2;
             $bot->setWebhook($page_url);
@@ -38,39 +34,24 @@ class Main extends Controller
 
     public function index() {
 
-        die;
-
         /**
          * Слушаем команды
          */
         try {
             $commands = new Commands();
             $commands->commandsList();
-        } catch (Exception $e) {
-            $this->errorsLog($e);
-        }
 
-        /**
-         * Слушаем callback (нажатие на меню)
-         */
-//        try {
-//            $callback_command = new Menu();
-//            $callback_command->callback();
-//        } catch (Exception $e) {
-//            $this->errorsLog($e);
-//        }
-
-        /**
-         * Слушаем сообщения
-         */
-        try {
+            $callback_command = new Menu();
+            $callback_command->callback();
+//
             $messages = new Messages();
             $messages->messagesList();
-        } catch (Exception $e) {
+
+        } catch (\TelegramBot\Api\Exception $e) {
             $this->errorsLog($e);
+            print_r($e->getMessage());
         }
 
-//        $this->client->run();
         $this->bot->sendMessage('112865662', "<b>Bot end</b>", 'html');
     }
 
@@ -130,7 +111,6 @@ class Main extends Controller
         } catch (Exception $e) {
 
         }
-        die;
 }
 
 

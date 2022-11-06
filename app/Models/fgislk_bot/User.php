@@ -27,7 +27,9 @@ class User extends Model
         $cid = $this->cid;
         if (!DB::table('users')->where('cid', '=', "$cid")->exists()) {
             $this->createUser();
-        }
+            return true;
+        } else
+            return false;
     }
 
     public function createUser() {
