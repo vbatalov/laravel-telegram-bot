@@ -36,7 +36,9 @@ class Messages extends Main
                 } else {
                     $this->setupCityError($cid);
                 }
-
+            }
+            if ($data_cookie == null) {
+                $this->cookieIsEmpty($cid);
             }
 
         }
@@ -70,13 +72,6 @@ class Messages extends Main
         }
     }
 
-    /**
-     * @param $cid
-     * @param $city
-     * @return \TelegramBot\Api\Types\Message
-     * @throws \TelegramBot\Api\Exception
-     * @throws \TelegramBot\Api\InvalidArgumentException
-     */
     public function setupCity($cid, $city) {
 
         $model = new User($cid);
@@ -85,20 +80,28 @@ class Messages extends Main
         $keyboard = new InlineKeyboardMarkup([
             [
                 ['callback_data' => 'menu', 'text' => 'Да, верно'],
-                ['callback_data' => 'cancel', 'text' => 'Нет, попробовать ещё раз'],
             ]
         ]);
-        $text = "<b>Мы определили ваш город:</b> \n\n$city";
+        $text = "<b>Настройка города</b> \n\nВы указали город: <b>$city</b>, верно? \n\n<i>Если я неправильно вас понял, попробуйте ещё раз.</i>";
         return $this->bot->sendMessage("$cid", "$text", "HTML", "", "", $keyboard, "");
     }
 
-    /**
-     * @param $cid
-     * @return \TelegramBot\Api\Types\Message
-     * @throws \TelegramBot\Api\Exception
-     * @throws \TelegramBot\Api\InvalidArgumentException
-     */
     public function setupCityError($cid) {
-        return $this->bot->sendMessage("$cid", "<b>Ошибка!</b> \n\nМы не смогли определить Ваш город, попробуйте снова.", "HTML", );
+        return $this->bot->sendMessage("$cid", "<b>Ошибка!</b> \n\n<i>Мы не смогли определить Ваш город, попробуйте снова.</i>",
+            "HTML", true, null, null, true);
+    }
+
+    /**
+     * Если cookie пустые → прошу выбрать меню
+     * @param $cid
+     */
+    public function cookieIsEmpty ($cid) {
+        $keyboard = new InlineKeyboardMarkup([
+            [
+                ['callback_data' => 'menu', 'text' => 'Показать меню']
+            ]
+        ]);
+        return $this->bot->sendMessage($cid, "<b>Внимание!</b> \n\nВы пытаетесь отправить боту сообщение, но не выбрали пункт меню. \n\nПожалуйста, воспользуйтесь меню и следуйте инструкциям.",
+            "HTML", true, null, $keyboard, true);
     }
 }

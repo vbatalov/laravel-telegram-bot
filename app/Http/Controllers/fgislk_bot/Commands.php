@@ -29,7 +29,7 @@ class Commands extends Main
 
             // При команде /start  будут установлены нулевые куки
             $cookie = new Cookies($message->cid);
-            $cookie->setCoookie(null);
+            $cookie->setCoookie('start');
 
             /**
              * Проверка пользователя в БД

@@ -12,8 +12,6 @@ use TelegramBot\Api\Exception;
 
 class Main extends Controller
 {
-
-
     public BotApi $bot;
     public Client $client;
 
@@ -27,10 +25,10 @@ class Main extends Controller
         $token = "5742517907:AAHlP8IsnJjHe7exYZkjmcK7ZQI4LJV5qjk";
         $bot = new Client($token, null);
 
-            $page_url1 = "https://ccfb-185-210-141-101.eu.ngrok.io/";
-            $page_url2 = "bot";
-            $page_url = $page_url1.$page_url2;
-            $bot->setWebhook($page_url);
+        $page_url1 = "https://ccfb-185-210-141-101.eu.ngrok.io/";
+        $page_url2 = "bot";
+        $page_url = $page_url1.$page_url2;
+        $bot->setWebhook($page_url);
     }
 
     public function index() {
@@ -38,6 +36,7 @@ class Main extends Controller
         /**
          * Слушаем команды
          */
+
         try {
             $commands = new Commands();
             $commands->commandsList();
