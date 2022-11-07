@@ -7,6 +7,7 @@ use App\Http\Controllers\fgislk_bot\Cookies;
 use App\Models\fgislk_bot\User;
 use TelegramBot\Api\Exception;
 use TelegramBot\Api\Types\Inline\InlineKeyboardMarkup;
+use TelegramBot\Api\Types\InputMedia\ArrayOfInputMedia;
 use TelegramBot\Api\Types\InputMedia\InputMedia;
 
 class Menu extends Main
@@ -106,18 +107,19 @@ class Menu extends Main
         $caption = "<b>Главное меню</b> \n\nЭто Ваш личный помощник — Buddy. \n\nДля начала работы, выберите соответствующий пункт.";
         $media = 'https://b2b.kedrach.com/fgislk_bot/images/gif/Main_menu.gif';
 
-        $photo =  [
+        $photo = [
             'type'=> 'animation',
             'media' => $media,
             'caption' => $caption,
-            'parse_mode' => 'html'
+            'parse_mode' => 'html',
         ];
 
         try {
 //            $this->bot->editMessageMedia($cid, $cbid, json_encode($photo));
             $this->bot->editMessageReplyMarkup($cid, $cbid, $keyboard);
         }
-        catch (Exception $e) {
+        catch (\TelegramBot\Api\Exception $e) {
+            print_r($e->getMessage());
             $this->bot->deleteMessage($cid, $messageId);
             $this->bot->sendAnimation($cid, $media, null, "$caption", null, $keyboard, "true", "HTML");
         }
