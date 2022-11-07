@@ -8,6 +8,7 @@ use App\Models\fgislk_bot\Error;
 
 use TelegramBot\Api\BotApi;
 use TelegramBot\Api\Client;
+use TelegramBot\Api\Exception;
 
 class Main extends Controller
 {
@@ -26,7 +27,7 @@ class Main extends Controller
         $token = "5742517907:AAHlP8IsnJjHe7exYZkjmcK7ZQI4LJV5qjk";
         $bot = new Client($token, null);
 
-            $page_url1 = "https://d280-37-21-235-73.eu.ngrok.io/";
+            $page_url1 = "https://ccfb-185-210-141-101.eu.ngrok.io/";
             $page_url2 = "bot";
             $page_url = $page_url1.$page_url2;
             $bot->setWebhook($page_url);
@@ -43,16 +44,15 @@ class Main extends Controller
 
             $callback_command = new Menu();
             $callback_command->callback();
-//
+
             $messages = new Messages();
             $messages->messagesList();
 
         } catch (\TelegramBot\Api\Exception $e) {
-            $this->errorsLog($e);
+//            $this->errorsLog($e);
             print_r($e->getMessage());
         }
 
-        $this->bot->sendMessage('112865662', "<b>Bot end</b>", 'html');
     }
 
     /**
@@ -64,7 +64,7 @@ class Main extends Controller
         try {
             return (object) [
                 'cid' => $message->getChat()->getId() ?? null,
-                'username' => $message->getChat()->getUsername(),
+                'username' => $message->getChat()->getUsername() ?? null,
                 'firstname' => $message->getChat()->getFirstname() ?? null,
                 'lastname' => $message->getChat()->getLastname() ?? null,
                 'text' => $message->getText() ?? null,

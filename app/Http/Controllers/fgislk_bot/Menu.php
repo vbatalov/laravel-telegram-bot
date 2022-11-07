@@ -4,6 +4,7 @@ namespace App\Http\Controllers\fgislk_bot;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\fgislk_bot\Cookies;
+use App\Models\fgislk_bot\User;
 
 class Menu extends Main
 {
@@ -39,6 +40,7 @@ class Menu extends Main
                 $cookie = new Cookies($cid);
                 $cookie->setCoookie("setup_city");
             }
+            $this->bot->answerCallbackQuery($cbid);
 
         }, function($update){
             $callback = $update->getCallbackQuery();

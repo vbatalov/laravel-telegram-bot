@@ -23,19 +23,31 @@ class User extends Model
         $this->username = $username;
     }
 
-    public function checkUser() {
+    public function checkUser()
+    {
         $cid = $this->cid;
+
         if (!DB::table('users')->where('cid', '=', "$cid")->exists()) {
-            $this->createUser();
-            return true;
-        } else
-            return false;
+            return $this->createUser();
+        }
     }
 
     public function createUser() {
         DB::table('users')->insert([
             'cid' => $this->cid ?? null,
             'firstname' => $this->firstname ?? null,
+        ]);
+    }
+
+    /**
+     * @param $cid
+     * @param $city
+     */
+    public function setupCity ($city) {
+        $cid = $this->cid;
+
+         DB::table('users')->where('cid', '=', "$cid")->update([
+            'city' => $city
         ]);
     }
 }
