@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers\fgislk_bot;
 
-use App\Http\Controllers\Controller;
-use App\Http\Controllers\fgislk_bot\Cookies;
-use App\Models\fgislk_bot\User;
+
 use TelegramBot\Api\Exception;
+use TelegramBot\Api\InvalidArgumentException;
 use TelegramBot\Api\Types\Inline\InlineKeyboardMarkup;
 use TelegramBot\Api\Types\InputMedia\ArrayOfInputMedia;
 use TelegramBot\Api\Types\InputMedia\InputMedia;
+use TelegramBot\Api\Types\InputMedia\InputMediaAnimation;
+
 
 class Menu extends Main
 {
@@ -40,23 +41,24 @@ class Menu extends Main
 
             //Задать вопрос
             if ($data == "menu") {
-
                 $cookie->setCoookie(null);
-                $this->mainMenu($cid, $cbid, $messageId);
-
-            } elseif ($data == 'cancel') {
-
-                $this->bot->answerCallbackQuery($cbid, "Мы не можем допустить использование бота, пока вы не согласитесь с условиями.",true);
-
-            } elseif ($data == 'setup_city') {
-
-                $cookie->setCoookie("setup_city");
-                $this->setupCity($cid, $messageId);
-
-            } else {
-                $this->bot->answerCallbackQuery($cbid, "Кажется, ещё не работает",true);
+                $this->menuMain($cid, $cbid, $messageId);
             }
 
+            if ($data == "functions") {
+                $this->menuFunctions($cid, $messageId);
+            }
+
+            if ($data == 'cancel') {
+                $this->bot->answerCallbackQuery($cbid, "Мы не можем допустить использование бота, пока вы не согласитесь с условиями.",true);
+            }
+
+            if ($data == 'setup_city') {
+                $cookie->setCoookie("setup_city");
+                $this->setupCity($cid, $messageId);
+            }
+
+            // Убираю прогрузку
             $this->bot->answerCallbackQuery($cbid);
 
         }, function($update) {
@@ -66,9 +68,9 @@ class Menu extends Main
             return true;
         });
 
+        // Запуск
         return $this->client->run();
     }
-
 
     public function setupCity ($cid, $messageId)
     {
@@ -79,11 +81,14 @@ class Menu extends Main
         try {
             return $this->bot->editMessageCaption("$cid", $messageId, "$text", null, "", "HTML");
         } catch (\TelegramBot\Api\Exception $e) {
-            print_r($e->getMessage());
+            return print_r($e->getMessage());
         }
     }
 
-    public function mainMenu ($cid, $cbid, $messageId) {
+    /**
+     * Главное меню
+     */
+    public function menuMain ($cid, $cbid, $messageId) {
         $keyboard = new InlineKeyboardMarkup (
             [
                 [
@@ -95,7 +100,7 @@ class Menu extends Main
                     ['callback_data' => 'doc_menu', 'text' => 'Документация'],
                 ],
                 [
-                    ['callback_data' => 'func_menu', 'text' => 'Дополнительные функции'],
+                    ['callback_data' => 'functions', 'text' => 'Дополнительные функции'],
                 ],
                 [
                     ['callback_data' => 'cabinet', 'text' => 'Личный кабинет'],
@@ -105,23 +110,63 @@ class Menu extends Main
         );
 
         $caption = "<b>Главное меню</b> \n\nЭто Ваш личный помощник — Buddy. \n\nДля начала работы, выберите соответствующий пункт.";
-        $media = 'https://b2b.kedrach.com/fgislk_bot/images/gif/Main_menu.gif';
+        $media =  "https://b2b.kedrach.com/fgislk_bot/images/gif/Main_menu.gif";
 
-        $photo = [
+        $photo = new InputMediaAnimation([
             'type'=> 'animation',
             'media' => $media,
-            'caption' => $caption,
+            "caption" => $caption,
             'parse_mode' => 'html',
-        ];
+        ]);
 
         try {
-//            $this->bot->editMessageMedia($cid, $cbid, json_encode($photo));
-            $this->bot->editMessageReplyMarkup($cid, $cbid, $keyboard);
+            if (!$this->bot->editMessageMedia($cid, $messageId, $photo)) {
+                throw new Exception('Ошибка редактирования @editMessageMedia');
+            }
+
+            $this->bot->editMessageReplyMarkup($cid, $messageId, $keyboard);
         }
-        catch (\TelegramBot\Api\Exception $e) {
+        catch (\Exception $e) {
             print_r($e->getMessage());
             $this->bot->deleteMessage($cid, $messageId);
             $this->bot->sendAnimation($cid, $media, null, "$caption", null, $keyboard, "true", "HTML");
+        }
+    }
+
+    public function menuFunctions ($cid, $messageId) {
+        $keyboard = new InlineKeyboardMarkup (
+            [
+                [
+                    ['callback_data' => 'functions', 'text' => 'Меню'],
+                ],
+            ]
+        );
+
+        $caption = "<b>Функции</b> \n\nРаздел функций1";
+        $media =  "https://b2b.kedrach.com/fgislk_bot/images/gif/func_menu.gif";
+
+        $photo = new InputMediaAnimation ([
+            'type'=> 'animation',
+            'media' => "$media",
+            "caption" => $caption,
+            'parse_mode' => 'html',
+        ]);
+
+        $animation = new InputMediaAnimation($media, $caption, "html");
+
+
+        try {
+            $a = $this->bot->editMessageMedia($cid, $messageId, $animation);
+            $b = $this->bot->editMessageReplyMarkup($cid, $messageId, $keyboard);
+            if (!$a and !$b) {
+                throw new \Exception();
+            }
+        }
+        catch (\Exception $e) {
+            print_r($e->getMessage());
+            $this->bot->sendAnimation($cid, $media, null, "$caption", null, $keyboard, "true", "HTML");
+        } catch (\Error $e) {
+            print_r($e->getMessage());
         }
     }
 }
