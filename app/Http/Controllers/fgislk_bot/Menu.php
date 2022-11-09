@@ -44,15 +44,12 @@ class Menu extends Main
                 $cookie->setCoookie(null);
                 $this->menuMain($cid, $cbid, $messageId);
             }
-
-            if ($data == "functions") {
+            if  ($data == "functions") {
                 $this->menuFunctions($cid, $messageId);
             }
-
             if ($data == 'cancel') {
                 $this->bot->answerCallbackQuery($cbid, "Мы не можем допустить использование бота, пока вы не согласитесь с условиями.",true);
             }
-
             if ($data == 'setup_city') {
                 $cookie->setCoookie("setup_city");
                 $this->setupCity($cid, $messageId);
@@ -72,8 +69,7 @@ class Menu extends Main
         return $this->client->run();
     }
 
-    public function setupCity ($cid, $messageId)
-    {
+    public function setupCity ($cid, $messageId) {
         $first_text = "<b>Пожалуйста, укажите город</b> \n\n";
         $second_text = "Напишите из какого Вы города, бот обработает сообщение и будет ждать Вашего подвтверждения.";
         $text = $first_text . $second_text;
@@ -92,9 +88,8 @@ class Menu extends Main
         $keyboard = new InlineKeyboardMarkup (
             [
                 [
-                    ['callback_data' => 'lesegais_report_menu', 'text' => 'Отследить сделки ЕГАИС Лес'],
+                    ['callback_data' => 'functionLesegaisReportMenu', 'text' => 'Отследить сделки ЕГАИС Лес'],
                 ],
-
                 [
                     ['callback_data' => 'start_question', 'text' => 'Задать вопрос'],
                     ['callback_data' => 'doc_menu', 'text' => 'Документация'],
@@ -112,24 +107,21 @@ class Menu extends Main
         $caption = "<b>Главное меню</b> \n\nЭто Ваш личный помощник — Buddy. \n\nДля начала работы, выберите соответствующий пункт.";
         $media =  "https://b2b.kedrach.com/fgislk_bot/images/gif/Main_menu.gif";
 
-        $photo = new InputMediaAnimation([
-            'type'=> 'animation',
-            'media' => $media,
-            "caption" => $caption,
-            'parse_mode' => 'html',
-        ]);
+        $animation = new InputMediaAnimation($media, $caption, "html");
+
 
         try {
-            if (!$this->bot->editMessageMedia($cid, $messageId, $photo)) {
-                throw new Exception('Ошибка редактирования @editMessageMedia');
+            $a = $this->bot->editMessageMedia($cid, $messageId, $animation);
+            $b = $this->bot->editMessageReplyMarkup($cid, $messageId, $keyboard);
+            if (!$a and !$b) {
+                throw new \Exception();
             }
-
-            $this->bot->editMessageReplyMarkup($cid, $messageId, $keyboard);
         }
         catch (\Exception $e) {
             print_r($e->getMessage());
-            $this->bot->deleteMessage($cid, $messageId);
             $this->bot->sendAnimation($cid, $media, null, "$caption", null, $keyboard, "true", "HTML");
+        } catch (\Error $e) {
+            print_r($e->getMessage());
         }
     }
 
@@ -137,20 +129,13 @@ class Menu extends Main
         $keyboard = new InlineKeyboardMarkup (
             [
                 [
-                    ['callback_data' => 'functions', 'text' => 'Меню'],
+                    ['callback_data' => 'menu', 'text' => 'Меню'],
                 ],
             ]
         );
 
         $caption = "<b>Функции</b> \n\nРаздел функций1";
         $media =  "https://b2b.kedrach.com/fgislk_bot/images/gif/func_menu.gif";
-
-        $photo = new InputMediaAnimation ([
-            'type'=> 'animation',
-            'media' => "$media",
-            "caption" => $caption,
-            'parse_mode' => 'html',
-        ]);
 
         $animation = new InputMediaAnimation($media, $caption, "html");
 

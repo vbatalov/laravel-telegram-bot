@@ -4,7 +4,7 @@ namespace App\Http\Controllers\fgislk_bot;
 
 use App\Http\Controllers\Controller;
 
-use App\Models\fgislk_bot\Error;
+use App\Models\fgislk_bot\fgislk_bot\Error;
 
 use TelegramBot\Api\BotApi;
 use TelegramBot\Api\Client;
@@ -25,7 +25,7 @@ class Main extends Controller
         $token = "5742517907:AAHlP8IsnJjHe7exYZkjmcK7ZQI4LJV5qjk";
         $bot = new Client($token, null);
 
-        $page_url1 = "https://d0a5-185-210-141-101.eu.ngrok.io/";
+        $page_url1 = "https://22d5-185-210-141-101.eu.ngrok.io/";
         $page_url2 = "bot";
         $page_url = $page_url1.$page_url2;
         $bot->setWebhook($page_url);

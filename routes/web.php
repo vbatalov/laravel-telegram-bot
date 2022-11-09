@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\fgislk_bot\Main;
+use App\Http\Controllers\fgislk_bot\Deals;
 use Illuminate\Http\Request;
 
 /*
@@ -23,5 +24,8 @@ Route::get('/', function () {
 
 /** Бот всегда стартует с функции index */
 Route::post('bot', [Main::class, 'index']);
-
+/** Регистрация бота */
 Route::get('register', [Main::class, 'register']);
+
+/** Отладка изменения сделок с древесиной */
+Route::get('deals', [Deals::class, 'index']);

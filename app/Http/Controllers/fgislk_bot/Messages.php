@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\fgislk_bot;
 
 
-use App\Models\fgislk_bot\User;
+use App\Models\fgislk_bot\fgislk_bot\User;
 use TelegramBot\Api\Types\Inline\InlineKeyboardMarkup;
 
 class Messages extends Main
@@ -82,7 +82,7 @@ class Messages extends Main
                 ['callback_data' => 'menu', 'text' => 'Да, верно'],
             ]
         ]);
-        $text = "<b>Настройка города</b> \n\nВы указали город: <b>$city</b>, верно? \n\n<i>Если я неправильно вас понял, попробуйте ещё раз.</i>";
+        $text = "<b>Подтвердите город</b> \n\nВы указали город: <b>$city</b>, верно? \n\n<i>Если я неправильно вас понял, попробуйте ещё раз.</i>";
         return $this->bot->sendMessage("$cid", "$text", "HTML", "", "", $keyboard, "");
     }
 

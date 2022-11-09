@@ -4,7 +4,7 @@ namespace App\Http\Controllers\fgislk_bot;
 
 use App\Http\Controllers\fgislk_bot\Cookies;
 
-use App\Models\fgislk_bot\User;
+use App\Models\fgislk_bot\fgislk_bot\User;
 use TelegramBot\Api\InvalidJsonException;
 
 class Commands extends Main

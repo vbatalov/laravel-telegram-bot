@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\fgislk_bot;
+namespace App\Models\fgislk_bot\fgislk_bot;
 
 use App\Http\Controllers\fgislk_bot\Main;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
