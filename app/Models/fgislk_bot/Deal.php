@@ -5,7 +5,6 @@ namespace App\Models\fgislk_bot;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\fgislk_bot\Main;
 
 class Deal extends Model
 {
@@ -28,7 +27,8 @@ class Deal extends Model
     }
 
 
-    public function get_contents_curl($data_string) {
+    public function get_contents_curl($data_string): bool|string
+    {
         $curl = curl_init('https://lesegais.ru/open-area/graphql');
         curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "POST");
         curl_setopt($curl, CURLOPT_POSTFIELDS, $data_string);
@@ -50,7 +50,8 @@ class Deal extends Model
         }
     }
 
-    public function queryCheckVolumeBuyer($inn) {
+    public function queryCheckVolumeBuyer($inn): array|string
+    {
         $data_string = '
 		{
 		  "query": "query SearchReportWoodDeal($size: Int!, $number: Int!, $filter: Filter, $orders: [Order!]) {\n  searchReportWoodDeal(filter: $filter, pageable: {number: $number, size: $size}, orders: $orders) {\n    content {\n      sellerName\n      sellerInn\n      buyerName\n      buyerInn\n      woodVolumeBuyer\n      woodVolumeSeller\n      dealDate\n      dealNumber\n      __typename\n    }\n    __typename\n  }\n}\n",
@@ -81,6 +82,7 @@ class Deal extends Model
      */
     public function firstJob() {
         $companies = $this->getCompanies();
+        DB::table('deals_first_job')->truncate();
 
         foreach ($companies as $value) {
             DB::table('deals_first_job')->insert([
@@ -115,7 +117,7 @@ class Deal extends Model
     /**
      * Для каждой записи делаю curl запрос
      */
-    public function secondJob() {
+    public function curlJob() {
 
         $jobs = $this->getFirstJob();
 

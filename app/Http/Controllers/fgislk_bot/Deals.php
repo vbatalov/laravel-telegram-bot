@@ -11,7 +11,8 @@ class Deals extends Controller
     // Используется для вывода результатов
     public function index() {
         $model = new Deal();
-//        $model->secondJob();
-        $model->different();
+        $model->firstJob();
+//        $model->curlJob();
+//        $model->different();
     }
 }
