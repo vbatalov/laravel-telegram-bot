@@ -2,11 +2,19 @@
 
 namespace App\Console;
 
+use App\Console\Commands\TestStage1;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
+use App\Http\Controllers\fgislk_bot\Deals;
+
 class Kernel extends ConsoleKernel
 {
+
+    protected $commands = [
+        TestStage1::class,
+    ];
+
     /**
      * Define the application's command schedule.
      *
@@ -15,7 +23,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        $schedule->command('command:test')->everyMinute();
     }
 
     /**
