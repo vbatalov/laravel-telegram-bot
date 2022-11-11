@@ -27,5 +27,12 @@ Route::post('bot', [Main::class, 'index']);
 /** Регистрация бота */
 Route::get('register', [Main::class, 'register']);
 
-/** Отладка изменения сделок с древесиной */
-Route::get('deals', [Deals::class, 'index']);
+
+/**
+ * Отладка изменения сделок с древесиной
+ */
+// Генерирует в БД один раз в день все компании, которые нужно проверить
+Route::get('deals/firstJobGenerate', [Deals::class, 'generateJob']);
+
+// Проверяет каждую компанию
+Route::get('deals/index', [Deals::class, 'index']);

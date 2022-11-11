@@ -5,10 +5,14 @@ namespace App\Models\fgislk_bot;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Exception as Except;
+use PHPUnit\Util\Exception;
 
 class Deal extends Model
 {
     use HasFactory;
+    const UPDATED_AT = "update_at";
+
     private string $volume_buyer;
     private string $volume_seller;
     private string $deal_buyer;
@@ -75,14 +79,20 @@ class Deal extends Model
         return str_replace("{inn}", $inn, $data_string);
     }
 
+    public function getCompanies(): array
+    {
+        return DB::table('deal_companies')->get()->all();
+    }
+
     /**
      * Создает первую работу в БД. И всегда опирается на неё
      * Все ИНН, которые нужно проверить
      * Для каждого ИНН создаю отдельные 4 записи (Проверка отчета (2), проверка новой сделки (2)
      */
-    public function firstJob() {
+    public function firstJobGenerate() {
         $companies = $this->getCompanies();
         DB::table('deals_first_job')->truncate();
+        DB::table('deal_queryCheckVolumeBuyer')->truncate();
 
         foreach ($companies as $value) {
             DB::table('deals_first_job')->insert([
@@ -109,7 +119,7 @@ class Deal extends Model
     }
 
     // Получает массив всех последующих задач
-    public function getFirstJob(): array
+    public function getFirstJobGenerate(): array
     {
         return DB::table('deals_first_job')->get()->all();
     }
@@ -119,7 +129,7 @@ class Deal extends Model
      */
     public function curlJob() {
 
-        $jobs = $this->getFirstJob();
+        $jobs = $this->getFirstJobGenerate();
 
         foreach ($jobs as $job) {
 
@@ -131,9 +141,11 @@ class Deal extends Model
             if ($job->checked == 0) {
                 if ($job->type == $this->volume_buyer) {
                     $query = $this->queryCheckVolumeBuyer("$inn");
+
                     if ($curl = $this->get_contents_curl($query)) {
                         $success = true;
                         $this->insertCurlToDatabase("$cid", "$inn", "$curl", "$this->table_deal_queryCheckVolumeBuyer");
+
                     }
 
                 } elseif ($job->type == $this->volume_seller) {
@@ -150,6 +162,8 @@ class Deal extends Model
                         ->where('inn', '=', "$inn")
                         ->where('type', '=', "$job->type")
                         ->update(['checked' => 1]);
+                } else {
+
                 }
             }
         }
@@ -185,7 +199,7 @@ class Deal extends Model
         }
     }
 
-    public function different() {
+    public function differentVolume() {
         $table_data = DB::table('deal_queryCheckVolumeBuyer')->get()->all();
         foreach ($table_data as $value) {
             if (empty($value->old)) {
@@ -196,21 +210,20 @@ class Deal extends Model
                     ->where("cid", "=", "$value->cid")
                     ->update(["checked" => 0]);
             } else {
-                $new = $value->new;
-                $old = $value->old;
-                $this->differentVolume("$new", "$old", "$value->cid");
+                $this->differentVolumeBuyer("$value->new", "$value->old", "$value->cid");
             }
         }
     }
 
-    /** Фукнция осуществляет поиск различий в двух запросах ($new, $old) */
-    public function differentVolume($new_json, $old_json, $cid) {
+    /** Фукнция осуществляет поиск различий в двух запросах ($new, $old)
+     * Возвращает ТОЛЬКО если Продавец изменил отчет
+     */
+    public function differentVolumeBuyer($new_json, $old_json, $cid) {
         $array = [];
 
         if (md5($new_json) != md5($old_json)) {
             $new = json_decode($new_json, true)['data']['searchReportWoodDeal']['content'];
             $old = json_decode($old_json, true)['data']['searchReportWoodDeal']['content'];
-//            dd($new_json);
 
             foreach ($new as $value_new) {
                 // Начало: Данные о сделке
@@ -251,16 +264,15 @@ class Deal extends Model
 
                  }
             }
+            if (isset($array)) {
+                $this->createNotifyUserJob($array);
+            }
+            dd($array);
         }
-        dd($array);
     }
 
-    public function getCompanies(): array
-    {
-        return DB::table('deal_companies')->get()->all();
+    public function createNotifyUserJob(array $array) {
+
     }
-
-
-
 
 }
