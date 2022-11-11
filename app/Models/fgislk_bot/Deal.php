@@ -7,12 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\fgislk_bot\Main;
 use TelegramBot\Api\Exception;
-use TelegramBot\Api\InvalidArgumentException;
 
 class Deal extends Model
 {
     use HasFactory;
-    const UPDATED_AT = "update_at";
 
     private string $volume_buyer;
     private string $volume_seller;
@@ -361,6 +359,8 @@ class Deal extends Model
         $third = "\n$oldWoodVolumeSeller м³ → $newWoodVolumeSeller м³";
         $fourth = "\n\n<b>Объем по сделке:</b> \nПр: $newWoodVolumeSeller / Пк: $newWoodVolumeBuyer"; // Общий объем по сделке
 
+
         return $first.$second.$third.$fourth;
     }
+
 }
