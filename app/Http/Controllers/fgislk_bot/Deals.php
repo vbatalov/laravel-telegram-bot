@@ -29,4 +29,8 @@ class Deals extends Controller
         $this->model->differentVolume();
     }
 
+    public function sendNotifications() {
+        $this->model->sendNotification();
+    }
+
 }

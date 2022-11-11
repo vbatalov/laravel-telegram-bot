@@ -5,8 +5,9 @@ namespace App\Models\fgislk_bot;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use Exception as Except;
-use PHPUnit\Util\Exception;
+use App\Http\Controllers\fgislk_bot\Main;
+use TelegramBot\Api\Exception;
+use TelegramBot\Api\InvalidArgumentException;
 
 class Deal extends Model
 {
@@ -60,7 +61,7 @@ class Deal extends Model
 		{
 		  "query": "query SearchReportWoodDeal($size: Int!, $number: Int!, $filter: Filter, $orders: [Order!]) {\n  searchReportWoodDeal(filter: $filter, pageable: {number: $number, size: $size}, orders: $orders) {\n    content {\n      sellerName\n      sellerInn\n      buyerName\n      buyerInn\n      woodVolumeBuyer\n      woodVolumeSeller\n      dealDate\n      dealNumber\n      __typename\n    }\n    __typename\n  }\n}\n",
 		  "variables": {
-			"size": 20,
+			"size": 100,
 			"number": 0,
 			"filter": {
 			  "items": [
@@ -135,37 +136,19 @@ class Deal extends Model
 
             $cid = $job->cid;
             $inn = $job->inn;
-            $success = false;
 
-            // Если ещё не проверили
-            if ($job->checked == 0) {
-                if ($job->type == $this->volume_buyer) {
-                    $query = $this->queryCheckVolumeBuyer("$inn");
+            if ($job->type == $this->volume_buyer) {
+                $query = $this->queryCheckVolumeBuyer("$inn");
 
-                    if ($curl = $this->get_contents_curl($query)) {
-                        $success = true;
-                        $this->insertCurlToDatabase("$cid", "$inn", "$curl", "$this->table_deal_queryCheckVolumeBuyer");
-
-                    }
-
-                } elseif ($job->type == $this->volume_seller) {
-
-                } elseif ($job->type == $this->deal_buyer) {
-
-                } elseif ($job->type == $this->deal_seller) {
-
+                if ($curl = $this->get_contents_curl($query)) {
+                    $this->insertCurlToDatabase("$cid", "$inn", "$curl", "$this->table_deal_queryCheckVolumeBuyer");
                 }
-                // ИНН на которые запрос прошел, ставлю проверенным.
-                if ($success == true) {
-                    DB::table('deals_first_job')
-                        ->where('cid', '=', "$cid")
-                        ->where('inn', '=', "$inn")
-                        ->where('type', '=', "$job->type")
-                        ->update(['checked' => 1]);
-                } else {
 
-                }
+            } elseif ($job->type == $this->volume_seller) {
+            } elseif ($job->type == $this->deal_buyer) {
+            } elseif ($job->type == $this->deal_seller) {
             }
+
         }
     }
 
@@ -201,15 +184,9 @@ class Deal extends Model
 
     public function differentVolume() {
         $table_data = DB::table('deal_queryCheckVolumeBuyer')->get()->all();
+
         foreach ($table_data as $value) {
-            if (empty($value->old)) {
-                // Используется один раз для новых ИНН. Если ещё нет значения @old,
-                // то с новым циклом всех задач, этот оператор if будет пропущен
-                DB::table('deals_first_job')
-                    ->where('inn', '=', "$value->inn")
-                    ->where("cid", "=", "$value->cid")
-                    ->update(["checked" => 0]);
-            } else {
+            if (isset($value->old)) {
                 $this->differentVolumeBuyer("$value->new", "$value->old", "$value->cid");
             }
         }
@@ -254,9 +231,11 @@ class Deal extends Model
                                 "buyerName" => $buyerName,
                                 "newWoodVolumeSeller" => $newWoodVolumeSeller,
                                 "oldWoodVolumeSeller" => $oldWoodVolumeSeller,
+                                "newWoodVolumeBuyer" => $newWoodVolumeBuyer,
+                                "oldWoodVolumeBuyer" => $oldWoodVolumeBuyer,
                                 "dealNumberNew" => $dealNumberNew,
                                 "dealNumberOld" => $dealNumberOld,
-                                "type" => $this->volume_seller,
+                                "type" => $this->volume_buyer,
                                 "cid" => $cid,
                             ];
                         }
@@ -264,15 +243,124 @@ class Deal extends Model
 
                  }
             }
+
             if (isset($array)) {
-                $this->createNotifyUserJob($array);
+                $this->createNotificationUserJob($cid, $array);
+                $this->createNotificationUserLog($cid, $array);
             }
-            dd($array);
         }
     }
 
-    public function createNotifyUserJob(array $array) {
+    /**
+     * Создаю список для дальнейей отправки уведомлений
+     */
+
+    public function createNotificationUserJob($cid, array $array) {
+        DB::table('deal_NotificationUserJob')->insert([
+            "cid" => "$cid",
+            "json" => json_encode($array, JSON_UNESCAPED_UNICODE),
+        ]);
+    }
+
+    /** Логирование нотификация для админстрирования */
+    public function createNotificationUserLog($cid, array $array) {
 
     }
 
+    /** Отправка уведомлений */
+    public function sendNotification() {
+        $bot = new Main();
+        $notifications = DB::table('deal_NotificationUserJob')->where('status', '=', '0')->get()->all();
+        foreach ($notifications as $allNotifications) {
+            $json = json_decode($allNotifications->json, true);
+            foreach ($json as $value) {
+                $sellerInn = $value['sellerInn'];
+                $buyerInn = $value['buyerInn'];
+                $sellerName = $value['sellerName'];
+                $buyerName = $value['buyerName'];
+                $newWoodVolumeSeller = $value['newWoodVolumeSeller'];
+                $oldWoodVolumeSeller = $value['oldWoodVolumeSeller'];
+                $newWoodVolumeBuyer = $value['newWoodVolumeBuyer'] ?? null;
+                $dealNumberNew = $value['dealNumberNew'];
+                $dealNumberOld = $value['dealNumberOld'];
+                $cid = $value['cid'];
+                $type = $value['type'];
+
+                if ($type == $this->volume_buyer) {
+                    // Формирую текст для отправки Покупателю, что его Продавец изменил отчет
+                    $text = $this->textNotificationForBuyer (
+                        "$sellerName",
+                        "$sellerInn",
+                        "$oldWoodVolumeSeller",
+                        "$newWoodVolumeSeller",
+                        "$newWoodVolumeBuyer",
+                        "$dealNumberNew",
+                    );
+                    try {
+                        if ($bot->bot->sendMessage($cid, $text, "HTML")) {
+                            $this->sendNotificationLog("$cid", "$text", true, "$this->volume_buyer");
+                            $this->setStatusNotificationAtDoneOrError($allNotifications->id, true);
+                        }
+                    } catch (Exception $e) {
+                        $error = ($e->getMessage());
+                        $this->sendNotificationLog("$cid", "$text", false, "$this->volume_buyer","$error");
+                        $this->setStatusNotificationAtDoneOrError($allNotifications->id, false);
+                    }
+                }
+            }
+        }
+    }
+
+    public function sendNotificationLog ($cid, $text, bool $success, $type, $error = null) {
+        if ($success) {
+            DB::table('deal_sendNotificationLog')->insert([
+                "cid" => "$cid",
+                "text" => "$text",
+                "status" => "1",
+                "type" => "$type",
+            ]);
+        } else {
+            DB::table('deal_sendNotificationLog')->insert([
+                "cid" => "$cid",
+                "text" => "$text",
+                "status" => "-1",
+                "error" => "$error",
+                "type" => "$type",
+            ]);
+        }
+    }
+
+    public function setStatusNotificationAtDoneOrError ($id, bool $success) {
+        if ($success) {
+            DB::table('deal_NotificationUserJob')
+                ->where("id", "=", $id)
+                ->update([
+                    "status" => 1
+                ]);
+        } else {
+            DB::table('deal_NotificationUserJob')
+                ->where("id", "=", $id)
+                ->update([
+                    "status" => -1
+                ]);
+        }
+
+    }
+
+    public function textNotificationForBuyer(
+        $sellerName,
+        $sellerInn,
+        $oldWoodVolumeSeller,
+        $newWoodVolumeSeller,
+        $newWoodVolumeBuyer,
+        $dealNumberNew
+    ): string {
+
+        $first = "<b>Обнаружены изменения в декларации:</b>\n<pre>$dealNumberNew</pre>";
+        $second = "\n\n<b>Продавец:</b> \n$sellerName, <b>ИНН:</b> $sellerInn \n\n<b>Изменил отчет:</b>";
+        $third = "\n$oldWoodVolumeSeller м³ → $newWoodVolumeSeller м³";
+        $fourth = "\n\n<b>Объем по сделке:</b> \nПр: $newWoodVolumeSeller / Пк: $newWoodVolumeBuyer"; // Общий объем по сделке
+
+        return $first.$second.$third.$fourth;
+    }
 }
