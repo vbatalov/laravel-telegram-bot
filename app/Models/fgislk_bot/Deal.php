@@ -18,6 +18,9 @@ class Deal extends Model
     private string $deal_seller;
 
     private string $table_deal_queryCheckVolumeBuyer;
+    private string $table_deal_queryCheckVolumeSeller;
+    private string $table_deal_queryCheckDealSeller;
+    private string $table_deal_queryCheckDealBuyer;
 
     public function __construct()
     {
@@ -27,8 +30,19 @@ class Deal extends Model
         $this->deal_seller = "deal_seller";
 
         $this->table_deal_queryCheckVolumeBuyer = "deal_queryCheckVolumeBuyer";
+        $this->table_deal_queryCheckVolumeSeller = "deal_queryCheckVolumeSeller";
+        $this->table_deal_queryCheckDealSeller = "deal_queryCheckDealSeller";
+        $this->table_deal_queryCheckDealBuyer = "deal_queryCheckDealBuyer";
     }
 
+    /** Добавляю ошибку в БД */
+    public function error(string $error, string $text, string $other = null) {
+        DB::table('deal_errors')->insert([
+            "error" => $error,
+            "text" => $text,
+            "other" => $other,
+        ]);
+    }
 
     public function get_contents_curl($data_string): bool|string
     {
@@ -65,6 +79,31 @@ class Deal extends Model
 			  "items": [
 				{
 				  "property": "buyerInn",
+				  "value": "{inn}",
+				  "operator": "ILIKE"
+				}
+			  ]
+			},
+			"orders": null
+		  },
+		  "operationName": "SearchReportWoodDeal"
+		}
+		';
+        return str_replace("{inn}", $inn, $data_string);
+    }
+
+    public function queryCheckVolumeSeller($inn): array|string
+    {
+        $data_string = '
+		{
+		  "query": "query SearchReportWoodDeal($size: Int!, $number: Int!, $filter: Filter, $orders: [Order!]) {\n  searchReportWoodDeal(filter: $filter, pageable: {number: $number, size: $size}, orders: $orders) {\n    content {\n      sellerName\n      sellerInn\n      buyerName\n      buyerInn\n      woodVolumeBuyer\n      woodVolumeSeller\n      dealDate\n      dealNumber\n      __typename\n    }\n    __typename\n  }\n}\n",
+		  "variables": {
+			"size": 100,
+			"number": 0,
+			"filter": {
+			  "items": [
+				{
+				  "property": "sellerInn",
 				  "value": "{inn}",
 				  "operator": "ILIKE"
 				}
@@ -140,9 +179,19 @@ class Deal extends Model
 
                 if ($curl = $this->get_contents_curl($query)) {
                     $this->insertCurlToDatabase("$cid", "$inn", "$curl", "$this->table_deal_queryCheckVolumeBuyer");
+                } else {
+                    $this->error("curlJob", "Пустой curl запрос", "cid: $cid, inn: $inn, type: $job->type");
                 }
 
             } elseif ($job->type == $this->volume_seller) {
+                $query = $this->queryCheckVolumeSeller("$inn");
+
+                if ($curl = $this->get_contents_curl($query)) {
+                    $this->insertCurlToDatabase("$cid", "$inn", "$curl", "$this->table_deal_queryCheckVolumeSeller");
+                } else {
+                    $this->error("curlJob", "Пустой curl запрос", "cid: $cid, inn: $inn, type: $job->type");
+                }
+
             } elseif ($job->type == $this->deal_buyer) {
             } elseif ($job->type == $this->deal_seller) {
             }
@@ -181,11 +230,19 @@ class Deal extends Model
     }
 
     public function differentVolume() {
-        $table_data = DB::table('deal_queryCheckVolumeBuyer')->get()->all();
-
+        // Проверка изменил ли отчет Продавец
+        $table_data = DB::table("$this->table_deal_queryCheckVolumeBuyer")->get()->all();
         foreach ($table_data as $value) {
             if (isset($value->old)) {
                 $this->differentVolumeBuyer("$value->new", "$value->old", "$value->cid");
+            }
+        }
+
+        // Проверка изменил ли отчет Покупатель
+        $table_data = DB::table("$this->table_deal_queryCheckVolumeSeller");
+        foreach ($table_data as $value) {
+            if (isset($value->old)) {
+                $this->differentVolumeSeller("$value->new", "$value->old", "$value->cid");
             }
         }
     }
@@ -242,7 +299,66 @@ class Deal extends Model
                  }
             }
 
-            if (isset($array)) {
+            if (!empty($array)) {
+                $this->createNotificationUserJob($cid, $array);
+                $this->createNotificationUserLog($cid, $array);
+            }
+        }
+    }
+
+    /** Фукнция осуществляет поиск различий в двух запросах ($new, $old)
+     * Возвращает ТОЛЬКО если Покупатель изменил отчет
+     */
+    public function differentVolumeSeller($new_json, $old_json, $cid) {
+        $array = [];
+
+        if (md5($new_json) != md5($old_json)) {
+            $new = json_decode($new_json, true)['data']['searchReportWoodDeal']['content'];
+            $old = json_decode($old_json, true)['data']['searchReportWoodDeal']['content'];
+
+            foreach ($new as $value_new) {
+                // Начало: Данные о сделке
+                $sellerName = ($value_new['sellerName']); // Продавец (наименование)
+                $sellerInn = ($value_new['sellerInn']); // Продавец (ИНН)
+                $buyerName = ($value_new['buyerName']); // Покупатель (наименование)
+                $buyerInn = ($value_new['buyerInn']); // Продавец (ИНН)
+                $dealNumberNew = ($value_new['dealNumber']); // Номер декларации
+                // Конец: Данные о сделке
+
+                //Данные отчета (новый запрос lesegais)
+                $newWoodVolumeBuyer = ($value_new['woodVolumeBuyer']); // Покупатель (данные отчета) новый файл
+                $newWoodVolumeSeller = ($value_new['woodVolumeSeller']); // Продавец (данные отчета) новый файл
+
+                foreach ($old as $value_old) {
+                    $dealNumberOld = ($value_old['dealNumber']);
+                    $oldWoodVolumeBuyer = ($value_old['woodVolumeBuyer']);	// Покупатель (данные отчета) старый файл
+                    $oldWoodVolumeSeller = ($value_old['woodVolumeSeller']); // Продавец (данные отчета) старый файл
+
+                    /** Нашли одинаковую сделку */
+                    if ($dealNumberNew == $dealNumberOld) {
+                        /** Если продавец изменил отчет */
+                        if ($newWoodVolumeSeller != $oldWoodVolumeSeller) {
+                            $array[] = [
+                                "sellerInn" => $sellerInn,
+                                "buyerInn" => $buyerInn,
+                                "sellerName" =>$sellerName,
+                                "buyerName" => $buyerName,
+                                "newWoodVolumeSeller" => $newWoodVolumeSeller,
+                                "oldWoodVolumeSeller" => $oldWoodVolumeSeller,
+                                "newWoodVolumeBuyer" => $newWoodVolumeBuyer,
+                                "oldWoodVolumeBuyer" => $oldWoodVolumeBuyer,
+                                "dealNumberNew" => $dealNumberNew,
+                                "dealNumberOld" => $dealNumberOld,
+                                "type" => $this->volume_buyer,
+                                "cid" => $cid,
+                            ];
+                        }
+                    }
+
+                }
+            }
+
+            if (!empty($array)) {
                 $this->createNotificationUserJob($cid, $array);
                 $this->createNotificationUserLog($cid, $array);
             }

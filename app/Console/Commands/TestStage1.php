@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Http\Controllers\fgislk_bot\Deals;
+use App\Http\Controllers\fgislk_bot\Main;
 use Illuminate\Console\Command;
 
 class TestStage1 extends Command
@@ -27,7 +29,9 @@ class TestStage1 extends Command
      */
     public function handle()
     {
-    echo("hello");
+        $notification = new Deals();
+        $notification->sendNotifications();
+
         \Log::info("Working fine!");
         return Command::SUCCESS;
     }
