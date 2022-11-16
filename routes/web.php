@@ -36,5 +36,7 @@ Route::get('deals/firstJobGenerate', [Deals::class, 'generateJob']);
 
 // Проверяет каждую компанию
 Route::get('deals/index', [Deals::class, 'index']);
+/** ВРЕМЕННО ПРОВЕРЯЕТ ТОЛЬКО ИЗМЕНЕНИЯ */
+Route::get('deals/diff', [Deals::class, 'diff']);
 // Отправка уведомлений
 Route::get('deals/sendNotifications', [Deals::class, 'sendNotifications']);

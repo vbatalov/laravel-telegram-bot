@@ -129,8 +129,12 @@ class Deal extends Model
      */
     public function firstJobGenerate() {
         $companies = $this->getCompanies();
+
         DB::table('deals_first_job')->truncate();
         DB::table('deal_queryCheckVolumeBuyer')->truncate();
+        DB::table("deal_queryCheckVolumeSeller")->truncate();
+        DB::table("deal_queryCheckDealBuyer")->truncate();
+        DB::table("deal_queryCheckDealSeller")->truncate();;
 
         foreach ($companies as $value) {
             DB::table('deals_first_job')->insert([
@@ -193,7 +197,15 @@ class Deal extends Model
                 }
 
             } elseif ($job->type == $this->deal_buyer) {
+
             } elseif ($job->type == $this->deal_seller) {
+                $query = $this->queryCheckVolumeSeller("$inn");
+
+                if ($curl = $this->get_contents_curl($query)) {
+                    $this->insertCurlToDatabase("$cid", "$inn", "$curl", "$this->table_deal_queryCheckDealSeller");
+                } else {
+                    $this->error("curlJob", "Пустой curl запрос", "cid: $cid, inn: $inn, type: $job->type");
+                }
             }
 
         }
@@ -223,7 +235,8 @@ class Deal extends Model
                     ->where("inn", "=", "$value->inn")
                     ->update([
                         "new" => $curl,
-                        "old" => "$value->new"
+                        "old" => "$value->new",
+                        "checked" => 0,
                 ]);
             }
         }
@@ -234,15 +247,26 @@ class Deal extends Model
         $table_data = DB::table("$this->table_deal_queryCheckVolumeBuyer")->get()->all();
         foreach ($table_data as $value) {
             if (isset($value->old)) {
-                $this->differentVolumeBuyer("$value->new", "$value->old", "$value->cid");
+                if ($value->checked == 0) {
+                    DB::table("$this->table_deal_queryCheckVolumeBuyer")
+                        ->where("id", "=", "$value->id")
+                        ->update(["checked" => 1]);
+
+                    $this->differentVolumeBuyer("$value->new", "$value->old", "$value->cid");
+                }
             }
         }
 
         // Проверка изменил ли отчет Покупатель
-        $table_data = DB::table("$this->table_deal_queryCheckVolumeSeller");
+        $table_data = DB::table("$this->table_deal_queryCheckVolumeSeller")->get()->all();
         foreach ($table_data as $value) {
             if (isset($value->old)) {
-                $this->differentVolumeSeller("$value->new", "$value->old", "$value->cid");
+                if ($value->checked == 0) {
+                    DB::table("$this->table_deal_queryCheckVolumeSeller")
+                        ->where("id", "=", "$value->id")
+                        ->update(["checked" => 1]);
+                    $this->differentVolumeSeller("$value->new", "$value->old", "$value->cid");
+                }
             }
         }
     }
@@ -337,7 +361,7 @@ class Deal extends Model
                     /** Нашли одинаковую сделку */
                     if ($dealNumberNew == $dealNumberOld) {
                         /** Если продавец изменил отчет */
-                        if ($newWoodVolumeSeller != $oldWoodVolumeSeller) {
+                        if ($newWoodVolumeBuyer != $oldWoodVolumeBuyer) {
                             $array[] = [
                                 "sellerInn" => $sellerInn,
                                 "buyerInn" => $buyerInn,
@@ -349,12 +373,11 @@ class Deal extends Model
                                 "oldWoodVolumeBuyer" => $oldWoodVolumeBuyer,
                                 "dealNumberNew" => $dealNumberNew,
                                 "dealNumberOld" => $dealNumberOld,
-                                "type" => $this->volume_buyer,
+                                "type" => $this->volume_seller,
                                 "cid" => $cid,
                             ];
                         }
                     }
-
                 }
             }
 
@@ -365,10 +388,122 @@ class Deal extends Model
         }
     }
 
+    public function search($array, $key, $value): array
+    {
+        $results = array();
+
+        if (is_array($array))
+        {
+            if (isset($array[$key]) && $array[$key] == $value)
+                $results[] = $array;
+
+            foreach ($array as $subarray)
+                $results = array_merge($results, $this->search($subarray, $key, $value));
+        }
+
+        return $results;
+    }
+
+    /** ОБНОВИТЬ CHECKED = 1 ДЛЯ ТЕСТА ПОСТАВИЛ 0 */
+    public function differentDeal() {
+        // Проверка на новые сделки Покупателя
+        $table_data = DB::table("$this->table_deal_queryCheckDealSeller")->get()->all();
+        foreach ($table_data as $value) {
+            if (isset($value->old)) {
+                if ($value->checked == 0) {
+                    DB::table("$this->table_deal_queryCheckDealSeller")
+                        ->where("id", "=", "$value->id")
+                        ->update(["checked" => 0]);
+
+                    $this->differentDealSeller("$value->new", "$value->old", "$value->cid");
+                }
+            }
+        }
+    }
+
+    public function differentDealSeller ($new_json, $old_json, $cid) {
+        $array = [];
+
+        if (md5($new_json) != md5($old_json)) {
+            $new = json_decode($new_json, true)['data']['searchReportWoodDeal']['content'];
+            $old = json_decode($old_json, true)['data']['searchReportWoodDeal']['content'];
+
+            $dealNewArray = [];
+            foreach ($new as $key => $value) {
+                //Данные о сделке
+                $dealNumberNewFile = ($value['dealNumber']); // Номер декларации
+                //Добавляю в массив номер сделки
+                $dealNewArray[$key] = $dealNumberNewFile;
+            }
+
+            $dealOldArray = [];
+            foreach ($old as $key => $value) {
+                //Данные о сделке
+                $dealNumberOldFile = ($value['dealNumber']); // Номер декларации
+                //Добавляю в массив номер сделки
+                $dealOldArray[$key] = $dealNumberOldFile;
+            }
+
+            $array_diff_dealClosed = array_diff($dealOldArray, $dealNewArray); // Сделка прекратила действие
+            $array_diff_dealOpen = array_diff($dealNewArray, $dealOldArray); // Новая сделка
+
+            // Если есть изменения в сделке, то выводим в ЛОГ (дебаг) и удаляем дубли
+            if (!empty($array_diff_dealClosed or $array_diff_dealOpen)) {
+
+                $array_diff_dealClosed = array_unique($array_diff_dealClosed); // Удаляю дубли
+
+                /** array_diff_dealOpen → Работает стабильно. Сравнивая НОВЫЙ и СТАРЫЙ запрос */
+                $array_diff_dealOpen = array_unique($array_diff_dealOpen); // Удаляю дубли
+
+                # НАЧАЛО: Нахожу по ключу массив со всеми данными
+                foreach ($array_diff_dealOpen as $key => $value) {
+                    $searchKey = $this->search($new, 'dealNumber', $value);
+                    $searchKey = array_unique($searchKey);
+
+                    dd($array_diff_dealOpen);
+
+                    # Формируем ответ по каждой новой декларации
+                    foreach ($searchKey as $key => $value) {
+                        $sellerName = $value['sellerName'];
+                        $sellerInn = $value['sellerInn'];
+                        $buyerName = $value['buyerName'];
+                        $buyerInn = $value['buyerInn'];
+                        $dealNumber = $value['dealNumber'];
+                        $dealDate = $value['dealDate'];
+                        $dealDate = date("d.m.Y", strtotime($dealDate));
+
+                        // Если массив пустой, мы не работаем дальше. Избегаем флуда
+                        if (empty($old)) {
+                            continue;
+                        }
+
+                        $msg1 = "<b>Обнаружена новая сделка с древесиной</b> \n\n";
+                        $msg2 = "<b>Продавец:</b> $sellerName \n<b>ИНН:</b> $sellerInn \n\n";
+                        $msg3 = "<b>Покупатель:</b> $buyerName \n<b>ИНН:</b> $buyerInn \n\n";
+                        $msgDate = "<b>Дата сделки</b>: $dealDate \n\n";
+                        $msg4 = "<b>Номер декларации:</b> \n<pre>$dealNumber</pre>";
+                    }
+                }
+                # КОНЕЦ: Нахожу по ключу массив со всеми данными
+                # return Данные без дублей
+                # return Ответ пользователю по каждой новой сделке (где он Покупатель)
+            }
+        }
+
+            if (!empty($array)) {
+                $this->createNotificationUserJob($cid, $array);
+                $this->createNotificationUserLog($cid, $array);
+            }
+
+    }
+
+    public function differentDealBuyer ($new_json, $old_json, $cid) {
+
+    }
+
     /**
      * Создаю список для дальнейей отправки уведомлений
      */
-
     public function createNotificationUserJob($cid, array $array) {
         DB::table('deal_NotificationUserJob')->insert([
             "cid" => "$cid",
@@ -385,6 +520,7 @@ class Deal extends Model
     public function sendNotification() {
         $bot = new Main();
         $notifications = DB::table('deal_NotificationUserJob')->where('status', '=', '0')->get()->all();
+
         foreach ($notifications as $allNotifications) {
             $json = json_decode($allNotifications->json, true);
             foreach ($json as $value) {
@@ -394,31 +530,50 @@ class Deal extends Model
                 $buyerName = $value['buyerName'];
                 $newWoodVolumeSeller = $value['newWoodVolumeSeller'];
                 $oldWoodVolumeSeller = $value['oldWoodVolumeSeller'];
+                $oldWoodVolumeBuyer = $value['oldWoodVolumeBuyer'] ?? null;
                 $newWoodVolumeBuyer = $value['newWoodVolumeBuyer'] ?? null;
                 $dealNumberNew = $value['dealNumberNew'];
                 $dealNumberOld = $value['dealNumberOld'];
                 $cid = $value['cid'];
                 $type = $value['type'];
 
-                if ($type == $this->volume_buyer) {
-                    // Формирую текст для отправки Покупателю, что его Продавец изменил отчет
-                    $text = $this->textNotificationForBuyer (
-                        "$sellerName",
-                        "$sellerInn",
-                        "$oldWoodVolumeSeller",
-                        "$newWoodVolumeSeller",
-                        "$newWoodVolumeBuyer",
-                        "$dealNumberNew",
-                    );
-                    try {
-                        if ($bot->bot->sendMessage($cid, $text, "HTML")) {
-                            $this->sendNotificationLog("$cid", "$text", true, "$this->volume_buyer");
-                            $this->setStatusNotificationAtDoneOrError($allNotifications->id, true);
+                if (!empty($type)) {
+                    // Формирую текст для отправки
+                    if ($type == $this->volume_buyer) {
+                        $text = $this->textNotificationForBuyer (
+                            "$sellerName",
+                            "$sellerInn",
+                            "$oldWoodVolumeSeller",
+                            "$newWoodVolumeSeller",
+                            "$newWoodVolumeBuyer",
+                            "$dealNumberNew",
+                        );
+                    } elseif ($type == $this->volume_seller) {
+                        $text = $this->textNotificationForSeller(
+                            "$buyerName",
+                            "$buyerInn",
+                            "$oldWoodVolumeBuyer",
+                            "$newWoodVolumeBuyer",
+                            "$newWoodVolumeSeller",
+                            "$dealNumberNew",
+                        );
+                    } elseif ($type == $this->deal_seller) {
+
+                    } elseif ($type == $this->deal_buyer) {
+
+                    }
+
+                    if (!empty($text)) {
+                        try {
+                            if ($bot->bot->sendMessage($cid, $text, "HTML")) {
+                                $this->sendNotificationLog("$cid", "$text", true, "$type");
+                                $this->setStatusNotificationAtDoneOrError($allNotifications->id, true);
+                            }
+                        } catch (Exception $e) {
+                            $error = ($e->getMessage());
+                            $this->sendNotificationLog("$cid", "$text", false, "$type","$error");
+                            $this->setStatusNotificationAtDoneOrError($allNotifications->id, false);
                         }
-                    } catch (Exception $e) {
-                        $error = ($e->getMessage());
-                        $this->sendNotificationLog("$cid", "$text", false, "$this->volume_buyer","$error");
-                        $this->setStatusNotificationAtDoneOrError($allNotifications->id, false);
                     }
                 }
             }
@@ -473,6 +628,24 @@ class Deal extends Model
         $first = "<b>Обнаружены изменения в декларации:</b>\n<pre>$dealNumberNew</pre>";
         $second = "\n\n<b>Продавец:</b> \n$sellerName, <b>ИНН:</b> $sellerInn \n\n<b>Изменил отчет:</b>";
         $third = "\n$oldWoodVolumeSeller м³ → $newWoodVolumeSeller м³";
+        $fourth = "\n\n<b>Объем по сделке:</b> \nПр: $newWoodVolumeSeller / Пк: $newWoodVolumeBuyer"; // Общий объем по сделке
+
+
+        return $first.$second.$third.$fourth;
+    }
+
+    public function textNotificationForSeller(
+        $buyerName,
+        $buyerInn,
+        $oldWoodVolumeBuyer,
+        $newWoodVolumeBuyer,
+        $newWoodVolumeSeller,
+        $dealNumberNew
+    ): string {
+
+        $first = "<b>Обнаружены изменения в декларации:</b>\n<pre>$dealNumberNew</pre>";
+        $second = "\n\n<b>Покупатель:</b> \n$buyerName, <b>ИНН:</b> $buyerInn \n\n<b>Изменил отчет:</b>";
+        $third = "\n$oldWoodVolumeBuyer м³ → $newWoodVolumeBuyer м³";
         $fourth = "\n\n<b>Объем по сделке:</b> \nПр: $newWoodVolumeSeller / Пк: $newWoodVolumeBuyer"; // Общий объем по сделке
 
 

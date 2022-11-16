@@ -26,11 +26,15 @@ class Deals extends Controller
      */
     public function index() {
         $this->model->curlJob(); // Создает запрос по каждому ИНН для 4х проверок
-        $this->model->differentVolume();
+    }
+
+    public function diff() {
+        $this->model->differentDeal();
     }
 
     public function sendNotifications() {
         $this->model->sendNotification();
     }
+
 
 }
