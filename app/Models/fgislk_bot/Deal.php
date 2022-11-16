@@ -460,8 +460,6 @@ class Deal extends Model
                     $searchKey = $this->search($new, 'dealNumber', $value);
                     $searchKey = array_unique($searchKey);
 
-                    dd($array_diff_dealOpen);
-
                     # Формируем ответ по каждой новой декларации
                     foreach ($searchKey as $key => $value) {
                         $sellerName = $value['sellerName'];
@@ -477,11 +475,15 @@ class Deal extends Model
                             continue;
                         }
 
-                        $msg1 = "<b>Обнаружена новая сделка с древесиной</b> \n\n";
-                        $msg2 = "<b>Продавец:</b> $sellerName \n<b>ИНН:</b> $sellerInn \n\n";
-                        $msg3 = "<b>Покупатель:</b> $buyerName \n<b>ИНН:</b> $buyerInn \n\n";
-                        $msgDate = "<b>Дата сделки</b>: $dealDate \n\n";
-                        $msg4 = "<b>Номер декларации:</b> \n<pre>$dealNumber</pre>";
+                        $array[] = [
+                            "sellerInn" => $sellerInn,
+                            "buyerInn" => $buyerInn,
+                            "sellerName" =>$sellerName,
+                            "buyerName" => $buyerName,
+                            "dealNumberNew" => $dealNumber,
+                            "type" => $this->deal_seller,
+                            "cid" => $cid,
+                        ];
                     }
                 }
                 # КОНЕЦ: Нахожу по ключу массив со всеми данными
@@ -490,10 +492,12 @@ class Deal extends Model
             }
         }
 
-            if (!empty($array)) {
-                $this->createNotificationUserJob($cid, $array);
-                $this->createNotificationUserLog($cid, $array);
-            }
+        dd($array);
+
+        if (!empty($array)) {
+            $this->createNotificationUserJob($cid, $array);
+            $this->createNotificationUserLog($cid, $array);
+        }
 
     }
 
@@ -524,18 +528,18 @@ class Deal extends Model
         foreach ($notifications as $allNotifications) {
             $json = json_decode($allNotifications->json, true);
             foreach ($json as $value) {
-                $sellerInn = $value['sellerInn'];
-                $buyerInn = $value['buyerInn'];
-                $sellerName = $value['sellerName'];
-                $buyerName = $value['buyerName'];
-                $newWoodVolumeSeller = $value['newWoodVolumeSeller'];
-                $oldWoodVolumeSeller = $value['oldWoodVolumeSeller'];
+                $sellerInn = $value['sellerInn'] ?? null;
+                $buyerInn = $value['buyerInn'] ?? null;
+                $sellerName = $value['sellerName'] ?? null;
+                $buyerName = $value['buyerName'] ?? null;
+                $newWoodVolumeSeller = $value['newWoodVolumeSeller'] ?? null;
+                $oldWoodVolumeSeller = $value['oldWoodVolumeSeller'] ?? null;
                 $oldWoodVolumeBuyer = $value['oldWoodVolumeBuyer'] ?? null;
                 $newWoodVolumeBuyer = $value['newWoodVolumeBuyer'] ?? null;
-                $dealNumberNew = $value['dealNumberNew'];
-                $dealNumberOld = $value['dealNumberOld'];
-                $cid = $value['cid'];
-                $type = $value['type'];
+                $dealNumberNew = $value['dealNumberNew'] ?? null;
+                $dealNumberOld = $value['dealNumberOld'] ?? null;
+                $cid = $value['cid'] ?? null;
+                $type = $value['type'] ?? null;
 
                 if (!empty($type)) {
                     // Формирую текст для отправки
