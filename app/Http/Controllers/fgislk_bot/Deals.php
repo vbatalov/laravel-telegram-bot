@@ -24,16 +24,20 @@ class Deals extends Controller
     /**
      * Используется для обработки результатов
      */
-    public function index() {
+    public function curlAllCompanies() {
         $this->model->curlJob(); // Создает запрос по каждому ИНН для 4х проверок
     }
 
     public function diff() {
-        $this->model->differentDeal();
+        $this->model->StartCheckNewDealBuyerAndSeller();
     }
 
     public function sendNotifications() {
         $this->model->sendNotification();
+    }
+
+    public function insertCompanies() {
+        $controller = new InsertAllCompanies();
     }
 
 

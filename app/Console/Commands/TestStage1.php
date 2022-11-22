@@ -30,7 +30,7 @@ class TestStage1 extends Command
     public function handle()
     {
         $notification = new Deals();
-        $notification->sendNotifications();
+        $notification->curlAllCompanies();
 
         \Log::info("Working fine!");
         return Command::SUCCESS;

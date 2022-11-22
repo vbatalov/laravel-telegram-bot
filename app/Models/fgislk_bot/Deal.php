@@ -67,7 +67,7 @@ class Deal extends Model
         }
     }
 
-    public function queryCheckVolumeBuyer($inn): array|string
+    public function queryCheckBuyer($inn): array|string
     {
         $data_string = '
 		{
@@ -92,7 +92,7 @@ class Deal extends Model
         return str_replace("{inn}", $inn, $data_string);
     }
 
-    public function queryCheckVolumeSeller($inn): array|string
+    public function queryCheckSeller($inn): array|string
     {
         $data_string = '
 		{
@@ -179,7 +179,7 @@ class Deal extends Model
             $inn = $job->inn;
 
             if ($job->type == $this->volume_buyer) {
-                $query = $this->queryCheckVolumeBuyer("$inn");
+                $query = $this->queryCheckBuyer("$inn");
 
                 if ($curl = $this->get_contents_curl($query)) {
                     $this->insertCurlToDatabase("$cid", "$inn", "$curl", "$this->table_deal_queryCheckVolumeBuyer");
@@ -188,7 +188,7 @@ class Deal extends Model
                 }
 
             } elseif ($job->type == $this->volume_seller) {
-                $query = $this->queryCheckVolumeSeller("$inn");
+                $query = $this->queryCheckSeller("$inn");
 
                 if ($curl = $this->get_contents_curl($query)) {
                     $this->insertCurlToDatabase("$cid", "$inn", "$curl", "$this->table_deal_queryCheckVolumeSeller");
@@ -197,9 +197,16 @@ class Deal extends Model
                 }
 
             } elseif ($job->type == $this->deal_buyer) {
+                $query = $this->queryCheckBuyer($inn);
+
+                if ($curl = $this->get_contents_curl($query)) {
+                    $this->insertCurlToDatabase("$cid", "$inn", "$curl", "$this->table_deal_queryCheckDealBuyer");
+                } else {
+                    $this->error("curlJob", "Пустой curl запрос", "cid: $cid, inn: $inn, type: $job->type");
+                }
 
             } elseif ($job->type == $this->deal_seller) {
-                $query = $this->queryCheckVolumeSeller("$inn");
+                $query = $this->queryCheckSeller("$inn");
 
                 if ($curl = $this->get_contents_curl($query)) {
                     $this->insertCurlToDatabase("$cid", "$inn", "$curl", "$this->table_deal_queryCheckDealSeller");
@@ -226,6 +233,7 @@ class Deal extends Model
                 'cid' => "$cid",
                 'inn' => "$inn",
                 'new' => $curl,
+                'old' => $curl,
             ]);
         } else {
             foreach ($table_data as $value) {
@@ -319,7 +327,6 @@ class Deal extends Model
                             ];
                         }
                     }
-
                  }
             }
 
@@ -405,23 +412,39 @@ class Deal extends Model
     }
 
     /** ОБНОВИТЬ CHECKED = 1 ДЛЯ ТЕСТА ПОСТАВИЛ 0 */
-    public function differentDeal() {
-        // Проверка на новые сделки Покупателя
+    public function StartCheckNewDealBuyerAndSeller() {
+        // Проверка на новые сделки у Продавца
         $table_data = DB::table("$this->table_deal_queryCheckDealSeller")->get()->all();
         foreach ($table_data as $value) {
             if (isset($value->old)) {
                 if ($value->checked == 0) {
                     DB::table("$this->table_deal_queryCheckDealSeller")
                         ->where("id", "=", "$value->id")
-                        ->update(["checked" => 0]);
+                        ->update(["checked" => 1]);
 
-                    $this->differentDealSeller("$value->new", "$value->old", "$value->cid");
+                    $this->searchNewDeal("$value->new", "$value->old", "$value->cid", "$this->deal_seller");
+                }
+            }
+        }
+        // Проверяю у Покупателя
+        $table_data = DB::table("$this->table_deal_queryCheckDealBuyer")->get()->all();
+        foreach ($table_data as $value) {
+            if (isset($value->old)) {
+                if ($value->checked == 0) {
+                    DB::table("$this->table_deal_queryCheckDealBuyer")
+                        ->where("id", "=", "$value->id")
+                        ->update(["checked" => 1]);
+
+                    $this->searchNewDeal("$value->new", "$value->old", "$value->cid", "$this->deal_buyer");
                 }
             }
         }
     }
 
-    public function differentDealSeller ($new_json, $old_json, $cid) {
+    /**
+     * Поиск новой сделки
+     */
+    public function searchNewDeal ($new_json, $old_json, $cid, $type) {
         $array = [];
 
         if (md5($new_json) != md5($old_json)) {
@@ -481,7 +504,8 @@ class Deal extends Model
                             "sellerName" =>$sellerName,
                             "buyerName" => $buyerName,
                             "dealNumberNew" => $dealNumber,
-                            "type" => $this->deal_seller,
+                            "dealDate" => $dealDate,
+                            "type" => $type,
                             "cid" => $cid,
                         ];
                     }
@@ -491,8 +515,6 @@ class Deal extends Model
                 # return Ответ пользователю по каждой новой сделке (где он Покупатель)
             }
         }
-
-        dd($array);
 
         if (!empty($array)) {
             $this->createNotificationUserJob($cid, $array);
@@ -538,6 +560,7 @@ class Deal extends Model
                 $newWoodVolumeBuyer = $value['newWoodVolumeBuyer'] ?? null;
                 $dealNumberNew = $value['dealNumberNew'] ?? null;
                 $dealNumberOld = $value['dealNumberOld'] ?? null;
+                $dealDate = $value['dealDate'] ?? null;
                 $cid = $value['cid'] ?? null;
                 $type = $value['type'] ?? null;
 
@@ -562,11 +585,26 @@ class Deal extends Model
                             "$dealNumberNew",
                         );
                     } elseif ($type == $this->deal_seller) {
-
+                        $text = $this->textNotificationNewDeal(
+                            "$buyerName",
+                            "$buyerInn",
+                            "$sellerName",
+                            "$sellerInn",
+                            "$dealNumberNew",
+                            "$dealDate",
+                        );
                     } elseif ($type == $this->deal_buyer) {
-
+                        $text = $this->textNotificationNewDeal(
+                            "$buyerName",
+                            "$buyerInn",
+                            "$sellerName",
+                            "$sellerInn",
+                            "$dealNumberNew",
+                            "$dealDate",
+                        );
                     }
 
+                    // Отправляю уведомление
                     if (!empty($text)) {
                         try {
                             if ($bot->bot->sendMessage($cid, $text, "HTML")) {
@@ -651,6 +689,24 @@ class Deal extends Model
         $second = "\n\n<b>Покупатель:</b> \n$buyerName, <b>ИНН:</b> $buyerInn \n\n<b>Изменил отчет:</b>";
         $third = "\n$oldWoodVolumeBuyer м³ → $newWoodVolumeBuyer м³";
         $fourth = "\n\n<b>Объем по сделке:</b> \nПр: $newWoodVolumeSeller / Пк: $newWoodVolumeBuyer"; // Общий объем по сделке
+
+
+        return $first.$second.$third.$fourth;
+    }
+
+    public function textNotificationNewDeal(
+        $buyerName,
+        $buyerInn,
+        $sellerName,
+        $sellerInn,
+        $dealNumberNew,
+        $dealDate,
+    ): string {
+
+        $first = "<b>Обнаружена новая сделка с древесиной</b>";
+        $second = "\n\n<b>Покупатель:</b> \n$buyerName, <b>ИНН:</b> $buyerInn";
+        $third = "\n\n<b>Продавец:</b> \n$sellerName, <b>ИНН:</b> $sellerInn";
+        $fourth = "\n\nДата сделки: $dealDate \n\n<b>Номер декларации:</b>\n<pre>$dealNumberNew</pre>";
 
 
         return $first.$second.$third.$fourth;

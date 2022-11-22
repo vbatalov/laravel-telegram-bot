@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\fgislk_bot\Main;
 use App\Http\Controllers\fgislk_bot\Deals;
+use App\Http\Controllers\InsertAllCompanies;
 use Illuminate\Http\Request;
 
 /*
@@ -35,8 +36,11 @@ Route::get('register', [Main::class, 'register']);
 Route::get('deals/firstJobGenerate', [Deals::class, 'generateJob']);
 
 // Проверяет каждую компанию
-Route::get('deals/index', [Deals::class, 'index']);
+Route::get('deals/index', [Deals::class, 'curlAllCompanies']);
 /** ВРЕМЕННО ПРОВЕРЯЕТ ТОЛЬКО ИЗМЕНЕНИЯ */
 Route::get('deals/diff', [Deals::class, 'diff']);
 // Отправка уведомлений
 Route::get('deals/sendNotifications', [Deals::class, 'sendNotifications']);
+
+//Импорт всех компаний
+Route::get('deals/import', [InsertAllCompanies::class, 'index']);
