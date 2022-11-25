@@ -640,13 +640,6 @@ class Deal extends Model
             foreach ($second as $secondKey => $secondValue) {
                 if (($firstValue['type'] == "$this->volume_seller") OR ($firstValue['type'] == "$this->volume_buyer")) {
                     if (($firstValue['dealNumberNew']) == ($secondValue['dealNumberNew'])) {
-
-                        // Удаляю сделки, в которых не произошли изменения
-//                        if (($firstValue['newWoodVolumeSeller'] == $secondValue['oldWoodVolumeSeller'])
-//                        OR ($firstValue['newWoodVolumeBuyer'] == $secondValue['oldWoodVolumeBuyer'])) {
-//                            unset($first[$firstKey]);
-//                        }
-
                         if ($firstValue['newWoodVolumeSeller'] == 0 ) {
                             unset($first[$firstKey]['newWoodVolumeSeller']);
                         }
@@ -659,7 +652,6 @@ class Deal extends Model
                         if ($firstValue['oldWoodVolumeBuyer'] == 0 ) {
                             unset($first[$firstKey]['oldWoodVolumeBuyer']);
                         }
-
                     }
                 }
             }
@@ -667,32 +659,52 @@ class Deal extends Model
 
         $third = $first;
         $fourth = $first;
-//        dd($first);
+        $arrayKeysForDelete = [];
         foreach ($third as $thirdKey => $thirdValue) {
             foreach ($fourth as $fourthKey => $fourthValue) {
                 if ($thirdValue['dealNumberNew'] == $fourthValue['dealNumberNew']) {
 
-                    if (empty($fourthValue['oldWoodVolumeSeller']) or (empty($thirdValue['newWoodVolumeSeller']))) {
-                        continue;
-                    } else {
-                        if ($thirdValue['newWoodVolumeSeller'] == $fourthValue['oldWoodVolumeSeller']) {
-                            unset($third[$thirdKey]);
-                        }
-                    }
+                    if (!empty($fourthValue['newWoodVolumeSeller']) and (!empty($thirdValue['oldWoodVolumeSeller']))) {
+                         if ($thirdValue['oldWoodVolumeSeller'] == $fourthValue['newWoodVolumeSeller']) {
+                             $arrayKeysForDelete[] = [
+                                 "key" => $thirdKey
+                             ];
+                         }
+                     }
 
-                    if (empty($fourthValue['oldWoodVolumeBuyer']) or (empty($thirdValue['newWoodVolumeBuyer']))) {
-                        continue;
-                    } else {
-                        if ($thirdValue['oldWoodVolumeBuyer'] == $fourthValue['newWoodVolumeBuyer']) {
-                            unset($third[$thirdKey]);
-                        }
-                    }
+                     if (!empty($fourthValue['newWoodVolumeBuyer']) and (!empty($thirdValue['oldWoodVolumeBuyer']))) {
+                         if ($thirdValue['oldWoodVolumeBuyer'] == $fourthValue['newWoodVolumeBuyer']) {
+                             $arrayKeysForDelete[] = [
+                                 "key" => $thirdKey
+                             ];
+                         }
+                     }
+
 
                 }
             }
         }
 
+        // Удаляю сделки, в которых нет изменений
+        foreach ($third as $key => $valueThird) {
+            foreach ($arrayKeysForDelete as $keyForDelete => $valueForDelete) {
+                if ($key == $valueForDelete['key']) {
+                    unset($third[$key]);
+                }
+            }
 
+        }
+
+        // Образую единый массив
+        $arrayOne = $third;
+        $arrayTwo = $third;
+        foreach ($arrayOne as $keyOne => $valueOne) {
+            foreach ($arrayTwo as $keyTwo => $valueTwo) {
+                if ($valueOne['dealNumberNew'] == $valueTwo['dealNumberNew']) {
+
+                }
+            }
+        }
 
         dd($third);
 
