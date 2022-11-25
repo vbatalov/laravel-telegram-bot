@@ -134,7 +134,7 @@ class Deal extends Model
         DB::table('deal_queryCheckVolumeBuyer')->truncate();
         DB::table("deal_queryCheckVolumeSeller")->truncate();
         DB::table("deal_queryCheckDealBuyer")->truncate();
-        DB::table("deal_queryCheckDealSeller")->truncate();;
+        DB::table("deal_queryCheckDealSeller")->truncate();
 
         foreach ($companies as $value) {
             DB::table('deals_first_job')->insert([
@@ -227,6 +227,7 @@ class Deal extends Model
             ->where('inn', '=', "$inn")
             ->get()->all();
 
+
         // Если это новый ИНН, создаю начальную конфигурацию
         if (empty($table_data)) {
             DB::table($table_name)->insert([
@@ -234,33 +235,41 @@ class Deal extends Model
                 'inn' => "$inn",
                 'new' => $curl,
                 'old' => $curl,
+                'checked' => 0,
             ]);
         } else {
             foreach ($table_data as $value) {
-                // Добавляю новый результат curl, а старый помещаю в old
-                DB::table($table_name)
-                    ->where('cid', '=', "$value->cid")
-                    ->where("inn", "=", "$value->inn")
-                    ->update([
-                        "new" => $curl,
-                        "old" => "$value->new",
-                        "checked" => 0,
-                ]);
+
+                // Если изменения ещё не проверены, будет ошибка.
+                if ($value->checked == 0) {
+                    return $this->error("Insert Curl to DB", "Запущен curl без проверки изменений", "cid: $cid, inn: $inn");
+                } else {
+                    // Добавляю новый результат curl, а старый помещаю в old
+                     DB::table($table_name)
+                        ->where('cid', '=', "$value->cid")
+                        ->where("inn", "=", "$value->inn")
+                        ->update([
+                            "new" => $curl,
+                            "old" => "$value->new",
+                            "checked" => 0,
+                    ]);
+                }
             }
         }
     }
 
     public function differentVolume() {
+
         // Проверка изменил ли отчет Продавец
         $table_data = DB::table("$this->table_deal_queryCheckVolumeBuyer")->get()->all();
         foreach ($table_data as $value) {
             if (isset($value->old)) {
                 if ($value->checked == 0) {
-                    DB::table("$this->table_deal_queryCheckVolumeBuyer")
-                        ->where("id", "=", "$value->id")
-                        ->update(["checked" => 1]);
-
-                    $this->differentVolumeBuyer("$value->new", "$value->old", "$value->cid");
+                    if ($this->differentVolumeBuyer("$value->new", "$value->old", "$value->cid")) {
+                        DB::table("$this->table_deal_queryCheckVolumeBuyer")
+                            ->where("id", "=", "$value->id")
+                            ->update(["checked" => 1]);
+                    }
                 }
             }
         }
@@ -270,10 +279,11 @@ class Deal extends Model
         foreach ($table_data as $value) {
             if (isset($value->old)) {
                 if ($value->checked == 0) {
-                    DB::table("$this->table_deal_queryCheckVolumeSeller")
-                        ->where("id", "=", "$value->id")
-                        ->update(["checked" => 1]);
-                    $this->differentVolumeSeller("$value->new", "$value->old", "$value->cid");
+                    if ($this->differentVolumeSeller("$value->new", "$value->old", "$value->cid")) {
+                        DB::table("$this->table_deal_queryCheckVolumeSeller")
+                            ->where("id", "=", "$value->id")
+                            ->update(["checked" => 1]);
+                    }
                 }
             }
         }
@@ -418,11 +428,11 @@ class Deal extends Model
         foreach ($table_data as $value) {
             if (isset($value->old)) {
                 if ($value->checked == 0) {
+                    $this->searchNewDeal("$value->new", "$value->old", "$value->cid", "$this->deal_seller");
+
                     DB::table("$this->table_deal_queryCheckDealSeller")
                         ->where("id", "=", "$value->id")
                         ->update(["checked" => 1]);
-
-                    $this->searchNewDeal("$value->new", "$value->old", "$value->cid", "$this->deal_seller");
                 }
             }
         }
@@ -431,11 +441,11 @@ class Deal extends Model
         foreach ($table_data as $value) {
             if (isset($value->old)) {
                 if ($value->checked == 0) {
+                    $this->searchNewDeal("$value->new", "$value->old", "$value->cid", "$this->deal_buyer");
+
                     DB::table("$this->table_deal_queryCheckDealBuyer")
                         ->where("id", "=", "$value->id")
                         ->update(["checked" => 1]);
-
-                    $this->searchNewDeal("$value->new", "$value->old", "$value->cid", "$this->deal_buyer");
                 }
             }
         }
@@ -496,6 +506,8 @@ class Deal extends Model
                         // Если массив пустой, мы не работаем дальше. Избегаем флуда
                         if (empty($old)) {
                             continue;
+                        } elseif ($buyerName == "Физическое лицо") {
+                            continue;
                         }
 
                         $array[] = [
@@ -523,10 +535,6 @@ class Deal extends Model
 
     }
 
-    public function differentDealBuyer ($new_json, $old_json, $cid) {
-
-    }
-
     /**
      * Создаю список для дальнейей отправки уведомлений
      */
@@ -549,6 +557,8 @@ class Deal extends Model
 
         foreach ($notifications as $allNotifications) {
             $json = json_decode($allNotifications->json, true);
+            $this->filterVolumeNotification($json);
+            die;
             foreach ($json as $value) {
                 $sellerInn = $value['sellerInn'] ?? null;
                 $buyerInn = $value['buyerInn'] ?? null;
@@ -607,7 +617,7 @@ class Deal extends Model
                     // Отправляю уведомление
                     if (!empty($text)) {
                         try {
-                            if ($bot->bot->sendMessage($cid, $text, "HTML")) {
+                            if ($bot->bot->sendMessage("112865662", $text, "HTML")) {
                                 $this->sendNotificationLog("$cid", "$text", true, "$type");
                                 $this->setStatusNotificationAtDoneOrError($allNotifications->id, true);
                             }
@@ -620,6 +630,73 @@ class Deal extends Model
                 }
             }
         }
+    }
+
+    public function filterVolumeNotification($json) {
+        $first = $json;
+        $second = $json;
+
+        foreach ($first as $firstKey => $firstValue) {
+            foreach ($second as $secondKey => $secondValue) {
+                if (($firstValue['type'] == "$this->volume_seller") OR ($firstValue['type'] == "$this->volume_buyer")) {
+                    if (($firstValue['dealNumberNew']) == ($secondValue['dealNumberNew'])) {
+
+                        // Удаляю сделки, в которых не произошли изменения
+//                        if (($firstValue['newWoodVolumeSeller'] == $secondValue['oldWoodVolumeSeller'])
+//                        OR ($firstValue['newWoodVolumeBuyer'] == $secondValue['oldWoodVolumeBuyer'])) {
+//                            unset($first[$firstKey]);
+//                        }
+
+                        if ($firstValue['newWoodVolumeSeller'] == 0 ) {
+                            unset($first[$firstKey]['newWoodVolumeSeller']);
+                        }
+                        if ($firstValue['oldWoodVolumeSeller'] == 0 ) {
+                            unset($first[$firstKey]['oldWoodVolumeSeller']);
+                        }
+                        if ($firstValue['newWoodVolumeBuyer'] == 0 ) {
+                            unset($first[$firstKey]['newWoodVolumeBuyer']);
+                        }
+                        if ($firstValue['oldWoodVolumeBuyer'] == 0 ) {
+                            unset($first[$firstKey]['oldWoodVolumeBuyer']);
+                        }
+
+                    }
+                }
+            }
+        }
+
+        $third = $first;
+        $fourth = $first;
+//        dd($first);
+        foreach ($third as $thirdKey => $thirdValue) {
+            foreach ($fourth as $fourthKey => $fourthValue) {
+                if ($thirdValue['dealNumberNew'] == $fourthValue['dealNumberNew']) {
+
+                    if (empty($fourthValue['oldWoodVolumeSeller']) or (empty($thirdValue['newWoodVolumeSeller']))) {
+                        continue;
+                    } else {
+                        if ($thirdValue['newWoodVolumeSeller'] == $fourthValue['oldWoodVolumeSeller']) {
+                            unset($third[$thirdKey]);
+                        }
+                    }
+
+                    if (empty($fourthValue['oldWoodVolumeBuyer']) or (empty($thirdValue['newWoodVolumeBuyer']))) {
+                        continue;
+                    } else {
+                        if ($thirdValue['oldWoodVolumeBuyer'] == $fourthValue['newWoodVolumeBuyer']) {
+                            unset($third[$thirdKey]);
+                        }
+                    }
+
+                }
+            }
+        }
+
+
+
+        dd($third);
+
+
     }
 
     public function sendNotificationLog ($cid, $text, bool $success, $type, $error = null) {
@@ -704,8 +781,8 @@ class Deal extends Model
     ): string {
 
         $first = "<b>Обнаружена новая сделка с древесиной</b>";
-        $second = "\n\n<b>Покупатель:</b> \n$buyerName, <b>ИНН:</b> $buyerInn";
-        $third = "\n\n<b>Продавец:</b> \n$sellerName, <b>ИНН:</b> $sellerInn";
+        $second = "\n\n<b>Покупатель:</b> \n$buyerName, \n<b>ИНН:</b> $buyerInn";
+        $third = "\n\n<b>Продавец:</b> \n$sellerName, \n<b>ИНН:</b> $sellerInn";
         $fourth = "\n\nДата сделки: $dealDate \n\n<b>Номер декларации:</b>\n<pre>$dealNumberNew</pre>";
 
 

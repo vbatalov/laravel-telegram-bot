@@ -28,7 +28,11 @@ class Deals extends Controller
         $this->model->curlJob(); // Создает запрос по каждому ИНН для 4х проверок
     }
 
-    public function diff() {
+    public function differentVolume() {
+        $this->model->differentVolume();
+    }
+
+    public function searchNewDeals() {
         $this->model->StartCheckNewDealBuyerAndSeller();
     }
 
