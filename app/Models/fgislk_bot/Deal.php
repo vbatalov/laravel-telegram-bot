@@ -242,7 +242,7 @@ class Deal extends Model
 
                 // Если изменения ещё не проверены, будет ошибка.
                 if ($value->checked == 0) {
-                    return $this->error("Insert Curl to DB", "Запущен curl без проверки изменений", "cid: $cid, inn: $inn");
+                     $this->error("Insert Curl to DB", "Запущен curl без проверки изменений", "cid: $cid, inn: $inn");
                 } else {
                     // Добавляю новый результат curl, а старый помещаю в old
                      DB::table($table_name)
@@ -660,6 +660,7 @@ class Deal extends Model
         $third = $first;
         $fourth = $first;
         $arrayKeysForDelete = [];
+
         foreach ($third as $thirdKey => $thirdValue) {
             foreach ($fourth as $fourthKey => $fourthValue) {
                 if ($thirdValue['dealNumberNew'] == $fourthValue['dealNumberNew']) {

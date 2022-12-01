@@ -23,7 +23,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('command:test')->everyMinute();
+        $schedule->command(TestStage1::class)->everyMinute();
     }
 
     /**

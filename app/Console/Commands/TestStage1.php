@@ -30,9 +30,9 @@ class TestStage1 extends Command
     public function handle()
     {
         $notification = new Deals();
-        $notification->sendNotifications();
+        $notification->generateJob();
 
-        \Log::info("Working fine!");
+        \Log::info("Working fine! Command from web");
         return Command::SUCCESS;
     }
 }

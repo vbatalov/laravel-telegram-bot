@@ -37,10 +37,17 @@ Route::get('deals/firstJobGenerate', [Deals::class, 'generateJob']);
 
 // Проверяет каждую компанию
 Route::get('deals/index', [Deals::class, 'curlAllCompanies']);
-/** ВРЕМЕННО ПРОВЕРЯЕТ ТОЛЬКО ИЗМЕНЕНИЯ */
-Route::get('deals/diff', [Deals::class, 'diff']);
+
+
+/**  ПРОВЕРЯЕТ ТОЛЬКО ИЗМЕНЕНИЯ */
+Route::get('deals/checkVolume', [Deals::class, 'differentVolume']);
+Route::get('deals/searchNewDeal', [Deals::class, 'searchNewDeals']);
+
 // Отправка уведомлений
 Route::get('deals/sendNotifications', [Deals::class, 'sendNotifications']);
 
 //Импорт всех компаний
 Route::get('deals/import', [InsertAllCompanies::class, 'index']);
+
+// Запуск задачи
+Route::get('deals/task/first', [\App\Http\Controllers\Schedule\TaskController::class, 'generateFirstJob']);
