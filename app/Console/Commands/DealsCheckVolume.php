@@ -2,18 +2,17 @@
 
 namespace App\Console\Commands;
 
-use App\Http\Controllers\fgislk_bot\Deals;
-use App\Http\Controllers\fgislk_bot\Main;
+use App\Models\fgislk_bot\Deal;
 use Illuminate\Console\Command;
 
-class TestStage1 extends Command
+class DealsCheckVolume extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'command:test';
+    protected $signature = 'command:CheckVolume';
 
     /**
      * The console command description.
@@ -29,8 +28,13 @@ class TestStage1 extends Command
      */
     public function handle()
     {
-//        $notification = new Deals();
-//        $notification->differentVolume();
+        \Log::info("$this->signature Start.");
+
+
+        $model = new Deal();
+        $model->differentVolume();
+
+        \Log::info("$this->signature Success End.");
 
         return Command::SUCCESS;
     }

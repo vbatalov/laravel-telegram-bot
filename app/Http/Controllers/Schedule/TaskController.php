@@ -11,6 +11,5 @@ class TaskController extends Controller
     public function generateFirstJob() {
         $task = new TestStage1();
         $task->handle();
-        \Log::info("Work. Log from Controller");
     }
 }

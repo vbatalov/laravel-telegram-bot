@@ -265,11 +265,10 @@ class Deal extends Model
         foreach ($table_data as $value) {
             if (isset($value->old)) {
                 if ($value->checked == 0) {
-                    if ($this->differentVolumeBuyer("$value->new", "$value->old", "$value->cid")) {
+                    $this->differentVolumeBuyer("$value->new", "$value->old", "$value->cid");
                         DB::table("$this->table_deal_queryCheckVolumeBuyer")
                             ->where("id", "=", "$value->id")
                             ->update(["checked" => 1]);
-                    }
                 }
             }
         }
@@ -279,11 +278,10 @@ class Deal extends Model
         foreach ($table_data as $value) {
             if (isset($value->old)) {
                 if ($value->checked == 0) {
-                    if ($this->differentVolumeSeller("$value->new", "$value->old", "$value->cid")) {
+                    $this->differentVolumeSeller("$value->new", "$value->old", "$value->cid");
                         DB::table("$this->table_deal_queryCheckVolumeSeller")
                             ->where("id", "=", "$value->id")
                             ->update(["checked" => 1]);
-                    }
                 }
             }
         }
