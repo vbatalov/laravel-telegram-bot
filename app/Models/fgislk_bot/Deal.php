@@ -634,6 +634,7 @@ class Deal extends Model
         $first = $json;
         $second = $json;
 
+        // Удаляю строки, где объем = 0
         foreach ($first as $firstKey => $firstValue) {
             foreach ($second as $secondKey => $secondValue) {
                 if (($firstValue['type'] == "$this->volume_seller") OR ($firstValue['type'] == "$this->volume_buyer")) {
@@ -693,13 +694,30 @@ class Deal extends Model
             }
 
         }
-
+        /**
+         * ЕСЛИ ОТЧЕТ ИЗМЕНИЛСЯ ТОЛЬКО В ОДНОМ СЛУЧАЕ
+         * МАССИВ СОСТОИТ ИЗ 1 ЭЛЕМЕНТА.
+         * НУЖНО ПРОВЕРЯТЬ И ИСПРАВЛЯТЬ ВЫШЕ
+         * ВЫШЕ ВЫШЕ ВЫШЕ!!!
+         */
         // Образую единый массив
         $arrayOne = $third;
         $arrayTwo = $third;
         foreach ($arrayOne as $keyOne => $valueOne) {
             foreach ($arrayTwo as $keyTwo => $valueTwo) {
                 if ($valueOne['dealNumberNew'] == $valueTwo['dealNumberNew']) {
+
+                    if (isset($valueTwo['oldWoodVolumeSeller']) and (isset($valueOne['newWoodVolumeSeller']))) {
+                        if ($valueOne['newWoodVolumeSeller'] != ($valueTwo['oldWoodVolumeSeller'])) {
+                            print_r("<pre>Разный объем у Продавца</pre>");
+                        }
+                    }
+
+                    if (isset($valueTwo['oldWoodVolumeBuyer']) and (isset($valueOne['newWoodVolumeBuyer']))) {
+                        if ($valueOne['newWoodVolumeBuyer'] != ($valueTwo['oldWoodVolumeBuyer'])) {
+                            print_r("<pre>Разный объем у Покупателя</pre>");
+                        }
+                    }
 
                 }
             }
