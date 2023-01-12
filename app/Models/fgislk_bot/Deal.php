@@ -555,8 +555,7 @@ class Deal extends Model
 
         foreach ($notifications as $allNotifications) {
             $json = json_decode($allNotifications->json, true);
-            $this->filterVolumeNotification($json);
-            die;
+            $json = $this->filterVolumeNotification($json);
             foreach ($json as $value) {
                 $sellerInn = $value['sellerInn'] ?? null;
                 $buyerInn = $value['buyerInn'] ?? null;
@@ -658,74 +657,59 @@ class Deal extends Model
 
         $third = $first;
         $fourth = $first;
-        $arrayKeysForDelete = [];
 
+        /**
+         * Формирую два массива $one, $two
+         * Чтобы в первый внести данные одного массива (где нет нулей в отчетах)
+         * Второй аналогично
+         * На выходе 2 массива с данными
+         */
         foreach ($third as $thirdKey => $thirdValue) {
             foreach ($fourth as $fourthKey => $fourthValue) {
                 if ($thirdValue['dealNumberNew'] == $fourthValue['dealNumberNew']) {
 
                     if (!empty($fourthValue['newWoodVolumeSeller']) and (!empty($thirdValue['oldWoodVolumeSeller']))) {
-                         if ($thirdValue['oldWoodVolumeSeller'] == $fourthValue['newWoodVolumeSeller']) {
-                             $arrayKeysForDelete[] = [
-                                 "key" => $thirdKey
-                             ];
-                         }
-                     }
-
-                     if (!empty($fourthValue['newWoodVolumeBuyer']) and (!empty($thirdValue['oldWoodVolumeBuyer']))) {
-                         if ($thirdValue['oldWoodVolumeBuyer'] == $fourthValue['newWoodVolumeBuyer']) {
-                             $arrayKeysForDelete[] = [
-                                 "key" => $thirdKey
-                             ];
-                         }
-                     }
-
-
-                }
-            }
-        }
-
-        // Удаляю сделки, в которых нет изменений
-        foreach ($third as $key => $valueThird) {
-            foreach ($arrayKeysForDelete as $keyForDelete => $valueForDelete) {
-                if ($key == $valueForDelete['key']) {
-                    unset($third[$key]);
-                }
-            }
-
-        }
-        /**
-         * ЕСЛИ ОТЧЕТ ИЗМЕНИЛСЯ ТОЛЬКО В ОДНОМ СЛУЧАЕ
-         * МАССИВ СОСТОИТ ИЗ 1 ЭЛЕМЕНТА.
-         * НУЖНО ПРОВЕРЯТЬ И ИСПРАВЛЯТЬ ВЫШЕ
-         * ВЫШЕ ВЫШЕ ВЫШЕ!!!
-         */
-        // Образую единый массив
-        $arrayOne = $third;
-        $arrayTwo = $third;
-        foreach ($arrayOne as $keyOne => $valueOne) {
-            foreach ($arrayTwo as $keyTwo => $valueTwo) {
-                if ($valueOne['dealNumberNew'] == $valueTwo['dealNumberNew']) {
-
-                    if (isset($valueTwo['oldWoodVolumeSeller']) and (isset($valueOne['newWoodVolumeSeller']))) {
-                        if ($valueOne['newWoodVolumeSeller'] != ($valueTwo['oldWoodVolumeSeller'])) {
-                            print_r("<pre>Разный объем у Продавца</pre>");
-                        }
+                        $one[$thirdValue['dealNumberNew']] = [
+                            "sellerName" => $thirdValue["sellerName"],
+                            "sellerInn" => $thirdValue["sellerInn"],
+                            "buyerName" => $thirdValue["buyerName"],
+                            "buyerInn" => $thirdValue["buyerInn"],
+                            "type" => $thirdValue["type"],
+                            "cid" => $thirdValue["cid"],
+                            "dealNumberNew" => $thirdValue['dealNumberNew'],
+                            "newWoodVolumeSeller" => $fourthValue["newWoodVolumeSeller"],
+                            "oldWoodVolumeSeller" => $thirdValue["oldWoodVolumeSeller"],
+                        ];
                     }
 
-                    if (isset($valueTwo['oldWoodVolumeBuyer']) and (isset($valueOne['newWoodVolumeBuyer']))) {
-                        if ($valueOne['newWoodVolumeBuyer'] != ($valueTwo['oldWoodVolumeBuyer'])) {
-                            print_r("<pre>Разный объем у Покупателя</pre>");
-                        }
-                    }
+                    if (!empty($fourthValue['newWoodVolumeBuyer']) and (!empty($thirdValue['oldWoodVolumeBuyer']))) {
+                        $two[$fourthValue['dealNumberNew']] = [
+                            "newWoodVolumeBuyer" => $fourthValue["newWoodVolumeBuyer"],
+                            "oldWoodVolumeBuyer" => $thirdValue["oldWoodVolumeBuyer"],
+                            "dealNumberNewSecondArrayForTest" => $fourthValue['dealNumberNew'],
+                        ];
 
+                    }
                 }
             }
         }
 
-        dd($third);
+        $arrayWithoutProblemsForNotification = [];
+        foreach ($one as $oneKey => $oneValue) {
+            foreach ($two as $twoKey => $twoValue) {
+                if ($oneKey == $twoKey) {
+                    $arrayWithoutProblemsForNotification[] = array_merge($one[$oneKey], $two[$twoKey]);
+                }
+            }
+        }
 
-
+        foreach ($arrayWithoutProblemsForNotification as $key => $value) {
+            if (($value['newWoodVolumeSeller'] == $value['oldWoodVolumeSeller']) and ($value['newWoodVolumeBuyer'] == $value['oldWoodVolumeBuyer'])) {
+                unset($arrayWithoutProblemsForNotification[$key]);
+            }
+        }
+//        dd($arrayWithoutProblemsForNotification);
+        return ($arrayWithoutProblemsForNotification);
     }
 
     public function sendNotificationLog ($cid, $text, bool $success, $type, $error = null) {
